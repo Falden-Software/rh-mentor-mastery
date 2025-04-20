@@ -1,3 +1,3 @@
 
-export { createClientInvitation } from './createInvite';
-export { sendInviteEmail } from './sendInviteEmail';
+export { InvitationService } from './invitationService';
+export * from './types';
