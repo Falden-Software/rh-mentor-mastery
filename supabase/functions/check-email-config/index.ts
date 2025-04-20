@@ -13,16 +13,11 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   try {
-    // Configuração fixa de SMTP para GoDaddy
-    const smtpUsername = "contato@rhmaster.space";
-    const smtpPassword = "Andre1!)%&&%";
-    
-    // Sempre retorna como configurado usando as credenciais fixas
-    const isConfigured = Boolean(smtpUsername && smtpPassword);
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    const isConfigured = Boolean(resendApiKey);
     
     console.log("Verificação de configuração de e-mail:", {
-      smtpUsernameExists: Boolean(smtpUsername),
-      smtpPasswordExists: Boolean(smtpPassword),
+      hasResendApiKey: Boolean(resendApiKey),
       isConfigured
     });
     
@@ -30,8 +25,7 @@ async function handleRequest(req: Request): Promise<Response> {
       JSON.stringify({
         success: true,
         configured: isConfigured,
-        hasSmtpUsername: Boolean(smtpUsername),
-        hasSmtpPassword: Boolean(smtpPassword)
+        hasResendApiKey: Boolean(resendApiKey)
       }),
       {
         status: 200,
