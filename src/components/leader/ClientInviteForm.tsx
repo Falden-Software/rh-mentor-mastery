@@ -29,7 +29,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
         
         if (error || !data?.configured) {
           setConfigStatus('not_configured');
-          setErrorMessage('Sistema de email não configurado. Contate o administrador.');
+          setErrorMessage('API do Resend não configurada. Contate o administrador.');
         } else {
           setConfigStatus('configured');
         }
@@ -46,7 +46,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (configStatus !== 'configured') {
-      notify.error('Sistema de email não configurado. Contate o administrador.');
+      notify.error('API do Resend não configurada. Contate o administrador.');
       return;
     }
     if (isSubmitting) return;
@@ -106,7 +106,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Configuração Incompleta</AlertTitle>
           <AlertDescription>
-            O sistema de email não está configurado. Contate o administrador para configurar as variáveis SMTP_USERNAME e SMTP_PASSWORD no Supabase.
+            O sistema de email não está configurado. Contate o administrador para configurar a chave de API do Resend no Supabase.
           </AlertDescription>
         </Alert>
       )}

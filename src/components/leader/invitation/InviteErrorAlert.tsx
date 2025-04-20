@@ -41,8 +41,8 @@ const InviteErrorAlert: React.FC<InviteErrorAlertProps> = ({
       )}
       <AlertTitle>
         {isDomainError ? 'Domínio não verificado' : 
-         isApiKeyError ? 'Erro de configuração' : 
-         isSmtpError ? 'Erro de conexão SMTP' :
+         isApiKeyError ? 'Chave de API não configurada' : 
+         isSmtpError ? 'Erro de conexão' :
          'Erro ao enviar convite'}
       </AlertTitle>
       <AlertDescription className="space-y-4">
@@ -71,16 +71,7 @@ const InviteErrorAlert: React.FC<InviteErrorAlertProps> = ({
               Erro ao enviar email: Failed to send a request to the Edge Function
             </p>
             <p className="mt-2 text-sm">
-              Ocorreu um erro na conexão com o servidor SMTP. Verifique se as credenciais SMTP estão corretas nas variáveis de ambiente do Supabase.
-            </p>
-            <p className="mt-2 text-sm">
-              Erros comuns incluem:
-              <ul className="list-disc list-inside mt-1">
-                <li>Credenciais incorretas (nome de usuário ou senha)</li>
-                <li>Servidor SMTP inacessível</li>
-                <li>Restrições do provedor de email</li>
-                <li>Problemas de rede</li>
-              </ul>
+              Ocorreu um erro na conexão com a API do Resend. Verifique se a chave de API está correta nas variáveis de ambiente do Supabase.
             </p>
             
             {onRetry && (
@@ -91,11 +82,8 @@ const InviteErrorAlert: React.FC<InviteErrorAlertProps> = ({
                   onClick={onRetry}
                   className="bg-orange-100 hover:bg-orange-200 border-orange-300"
                 >
-                  Tentar novamente (modo alternativo)
+                  Tentar novamente
                 </Button>
-                <p className="text-xs mt-1 text-orange-700">
-                  Tentaremos enviar usando um método alternativo.
-                </p>
               </div>
             )}
           </>
