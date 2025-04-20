@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,22 +18,30 @@ const ClientLogin = () => {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   const { login, isLoading, error, isAuthenticated, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Redirect if already authenticated
   useEffect(() => {
-    if (isAuthenticated && user) {
-      // Redirect based on user role
-      if (user.role === "mentor") {
-        navigate("/leader");
-      } else {
-        navigate("/client");
-      }
+    if (isAuthenticated && user && !isRedirecting) {
+      console.log("Login: usuário autenticado, redirecionando", { role: user.role, id: user.id });
+      setIsRedirecting(true);
+      
+      // Pequeno atraso para evitar loops de redirecionamento
+      setTimeout(() => {
+        // Redirect based on user role
+        if (user.role === "mentor") {
+          navigate("/leader", { replace: true });
+        } else {
+          navigate("/client", { replace: true });
+        }
+      }, 300);
     }
-  }, [isAuthenticated, user, navigate]);
+  }, [isAuthenticated, user, navigate, isRedirecting]);
 
   // Limpa os erros específicos do campo quando o usuário começa a digitar
   useEffect(() => {
@@ -102,6 +110,18 @@ const ClientLogin = () => {
   const getFieldErrorClass = (field: string) => {
     return formErrors[field] ? "border-red-500" : "";
   };
+
+  // Se já estamos redirecionando, mostrar um indicador de loading
+  if (isRedirecting) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="flex flex-col items-center">
+          <Loader2 className="h-12 w-12 animate-spin text-purple-600 mb-4" />
+          <p className="text-xl">Redirecionando para o dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-slate-50">
