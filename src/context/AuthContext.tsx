@@ -1,8 +1,10 @@
+
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { AuthUser } from '@/lib/authTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
+import { Profile } from '@/types/profile';
 
 export interface AuthContextType {
   user: AuthUser | null;
