@@ -1,3 +1,4 @@
+
 // This is a placeholder file - tests will be implemented later
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { InvitationService } from '../invitationService';

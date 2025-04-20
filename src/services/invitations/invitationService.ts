@@ -1,9 +1,12 @@
 
+import { supabase } from "@/lib/supabase/client";
+import { z } from 'zod';
 import { InviteCreateParams, InvitationResult } from './types';
 import { validateInviteData, handleValidationError } from './validation';
 import { findExistingInvite, updateExistingInvite, createNewInvite, getMentorInvitations } from './database';
 import { sendInviteEmail } from './emailService';
 import { ErrorService } from '../errorService';
+import { AuthUser } from '@/lib/authTypes';
 
 export class InvitationService {
   static async createInvitation(email: string, name: string, mentor: AuthUser | null): Promise<InvitationResult> {
@@ -128,6 +131,3 @@ export class InvitationService {
 
   static getInvitationsByMentor = getMentorInvitations;
 }
-
-// Re-export types
-export * from './types';
