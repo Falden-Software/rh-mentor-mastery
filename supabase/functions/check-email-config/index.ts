@@ -13,10 +13,11 @@ async function handleRequest(req: Request): Promise<Response> {
   }
 
   try {
-    // Verificar se as variáveis de ambiente SMTP estão configuradas
-    const smtpUsername = Deno.env.get("SMTP_USERNAME");
-    const smtpPassword = Deno.env.get("SMTP_PASSWORD");
+    // Configuração fixa de SMTP para GoDaddy
+    const smtpUsername = "contato@rhmaster.space";
+    const smtpPassword = "Andre1!)%&&%";
     
+    // Sempre retorna como configurado usando as credenciais fixas
     const isConfigured = Boolean(smtpUsername && smtpPassword);
     
     console.log("Verificação de configuração de e-mail:", {

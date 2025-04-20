@@ -2,26 +2,35 @@
 import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 import { EmailResult } from "./types.ts";
 
+// Configurações fixas de SMTP para GoDaddy
+const SMTP_CONFIG = {
+  host: "smtpout.secureserver.net",
+  port: 465,
+  username: "contato@rhmaster.space",
+  password: "Andre1!)%&&%",
+  secure: true
+};
+
 export async function sendWithGoDaddy(
   to: string,
   subject: string,
   htmlContent: string,
-  smtpUsername: string,
-  smtpPassword: string
+  smtpUsername: string = SMTP_CONFIG.username,
+  smtpPassword: string = SMTP_CONFIG.password
 ): Promise<EmailResult> {
   try {
     const client = new SmtpClient();
     
     await client.connect({
-      hostname: "smtpout.secureserver.net", // GoDaddy SMTP server
-      port: 465,
-      username: smtpUsername,
-      password: smtpPassword,
-      tls: true,
+      hostname: SMTP_CONFIG.host,
+      port: SMTP_CONFIG.port,
+      username: smtpUsername || SMTP_CONFIG.username,
+      password: smtpPassword || SMTP_CONFIG.password,
+      tls: SMTP_CONFIG.secure,
     });
     
     const result = await client.send({
-      from: smtpUsername,
+      from: smtpUsername || SMTP_CONFIG.username,
       to: to,
       subject: subject,
       content: htmlContent,

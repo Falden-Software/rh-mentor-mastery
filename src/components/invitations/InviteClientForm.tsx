@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, MailWarning } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { InvitationService } from "@/services/invitationService";
 import { checkEmailConfig } from "@/services/emailConfigService";
 
@@ -33,19 +33,16 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
       setDevModeEnabled(true);
     }
     
-    // Não permitir ativar automaticamente o dev mode para usuários não mestres
-    // Removido o código que ativava automaticamente
-    
     const verifyEmailConfig = async () => {
       try {
-        const { configured, error: configError } = await checkEmailConfig();
+        const { configured } = await checkEmailConfig();
         if (configured) {
+          console.log("Email configurado com sucesso");
           setConfigStatus('configured');
         } else {
-          console.log("Email não configurado:", configError);
+          console.log("Email não configurado");
           setConfigStatus('not_configured');
-          setError("O sistema de email não está configurado. " + 
-                  (configError ? configError : "Verifique as variáveis de ambiente SMTP."));
+          setError("O sistema de email não está configurado. Verifique as variáveis de ambiente SMTP.");
         }
       } catch (err) {
         console.error("Erro ao verificar configuração de email:", err);
@@ -146,8 +143,8 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
                 variant="outline" 
                 size="sm" 
                 className="mt-2"
+                disabled={!user.is_master_account}
               >
-                <MailWarning className="mr-2 h-4 w-4" />
                 Ativar modo de desenvolvimento
               </Button>
             )}
