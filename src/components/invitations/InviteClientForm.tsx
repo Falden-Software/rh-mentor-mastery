@@ -1,76 +1,62 @@
 
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { Loader2, AlertCircle } from "lucide-react";
-import { createClientInvitation } from "@/services/invitations/createInvite";
-import { checkEmailConfig } from "@/services/emailConfigService";
 import { useAuth } from "@/context/AuthContext";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { StatusAlert } from "@/components/ui/status-alert";
-
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle, MailWarning } from "lucide-react";
+import { createClientInvitation } from "@/services/invitations";
+import { checkEmailConfig } from "@/services/emailConfigService";
 
 interface InviteClientFormProps {
-  onInviteSent?: () => void;
+  onInviteSent: () => void;
 }
 
 export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
-  const { toast } = useToast();
-  const { user } = useAuth();
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
-  const [isSendingInvite, setIsSendingInvite] = useState(false);
-  const [isConfigured, setIsConfigured] = useState<boolean | null>(null);
-  const [isCheckingConfig, setIsCheckingConfig] = useState(true);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [configStatus, setConfigStatus] = useState<'checking' | 'configured' | 'not_configured'>('checking');
+  const [devModeEnabled, setDevModeEnabled] = useState(false);
+  
+  const { toast } = useToast();
+  const { user, isDevMode } = useAuth();
+  
+  // Verificar configuração de email
   useEffect(() => {
-    const checkConfig = async () => {
-      setIsCheckingConfig(true);
+    const verifyEmailConfig = async () => {
       try {
-        const result = await checkEmailConfig();
-        setIsConfigured(result.configured);
-      } catch (error) {
-        console.error("Erro ao verificar configuração:", error);
-        setIsConfigured(false);
-      } finally {
-        setIsCheckingConfig(false);
+        const { configured, error: configError } = await checkEmailConfig();
+        if (configured) {
+          setConfigStatus('configured');
+        } else {
+          console.log("Email não configurado:", configError);
+          setConfigStatus('not_configured');
+          setError("O sistema de email não está configurado. " + 
+                  (configError ? configError : "Verifique as variáveis de ambiente SMTP."));
+        }
+      } catch (err) {
+        console.error("Erro ao verificar configuração de email:", err);
+        setConfigStatus('not_configured');
+        setError("Erro ao verificar configuração de email");
       }
     };
     
-    checkConfig();
-  }, []);
-
-  const handleSendInvite = async (e: React.FormEvent) => {
+    verifyEmailConfig();
+    
+    // Se estamos em modo de desenvolvimento, ativar o modo de desenvolvimento para o formulário
+    if (isDevMode) {
+      setDevModeEnabled(true);
+    }
+  }, [isDevMode]);
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!clientEmail || !clientName) {
-      toast({
-        variant: "destructive",
-        title: "Campos obrigatórios",
-        description: "Por favor, preencha o nome e email do cliente.",
-      });
-      return;
-    }
-    
-    if (isConfigured === false) {
-      toast({
-        variant: "destructive",
-        title: "Configuração incompleta",
-        description: "O sistema de email não está configurado. Contate o administrador.",
-      });
-      return;
-    }
-    
-    setIsSendingInvite(true);
+    setIsSubmitting(true);
+    setError(null);
     
     try {
       const result = await createClientInvitation(clientEmail, clientName, user);
@@ -80,111 +66,105 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
           title: "Convite enviado",
           description: result.message || "Convite enviado com sucesso!",
         });
-        setClientEmail("");
+        
         setClientName("");
-        if (onInviteSent) onInviteSent();
+        setClientEmail("");
+        onInviteSent();
       } else {
-        if (result.isSmtpError) {
-          toast({
-            variant: "destructive",
-            title: "Erro de configuração",
-            description: "Erro de configuração de email. Contate o administrador.",
-          });
-        } else if (result.isDomainError) {
-          toast({
-            variant: "destructive",
-            title: "Domínio não verificado",
-            description: "É necessário verificar um domínio para enviar emails.",
-          });
-        } else if (result.isApiKeyError) {
-          toast({
-            variant: "destructive",
-            title: "Configuração ausente",
-            description: "Configuração de email ausente. Contate o administrador.",
-          });
-        } else {
-          toast({
-            variant: "destructive",
-            title: "Erro ao enviar convite",
-            description: result.error || "Falha ao enviar convite.",
-          });
-        }
+        setError(result.error || "Ocorreu um erro ao enviar o convite");
+        toast({
+          variant: "destructive",
+          title: "Erro ao enviar convite",
+          description: result.error || "Tente novamente mais tarde",
+        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Erro ao enviar convite:", error);
+      setError(error.message || "Ocorreu um erro ao enviar o convite");
       toast({
         variant: "destructive",
-        title: "Erro inesperado",
-        description: "Ocorreu um erro inesperado. Tente novamente.",
+        title: "Erro ao enviar convite",
+        description: "Tente novamente mais tarde",
       });
     } finally {
-      setIsSendingInvite(false);
+      setIsSubmitting(false);
     }
   };
-
+  
+  const toggleDevMode = () => {
+    setDevModeEnabled(prev => !prev);
+  };
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Convidar Novo Cliente</CardTitle>
-        <CardDescription>
-          Envie um convite para um novo cliente se juntar à plataforma
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isCheckingConfig ? (
-          <LoadingSpinner 
-            size="md" 
-            text="Verificando configuração..."
-            className="py-4" 
-          />
-        ) : isConfigured === false ? (
-          <StatusAlert
-            status="error"
-            title="Configuração Incompleta"
-            description="O sistema de email não está configurado. Contate o administrador."
-          />
-        ) : null}
-        
-        <form onSubmit={handleSendInvite} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="clientName">Nome do Cliente</Label>
-            <Input
-              id="clientName"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-              placeholder="Nome completo do cliente"
-              disabled={isSendingInvite || isConfigured === false}
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="clientEmail">Email do Cliente</Label>
-            <Input
-              id="clientEmail"
-              type="email"
-              value={clientEmail}
-              onChange={(e) => setClientEmail(e.target.value)}
-              placeholder="cliente@exemplo.com"
-              disabled={isSendingInvite || isConfigured === false}
-            />
-          </div>
-          
-          <Button 
-            type="submit" 
-            className="w-full"
-            disabled={isSendingInvite || !clientName || !clientEmail || isConfigured === false}
-          >
-            {isSendingInvite ? (
-              <>
-                <LoadingSpinner size="sm" />
-                <span className="ml-2">Enviando...</span>
-              </>
-            ) : (
-              "Enviar Convite"
+    <div id="invite-client" className="bg-white p-6 rounded-lg shadow-md">
+      <h3 className="text-xl font-semibold mb-4">Convidar Cliente</h3>
+      
+      {configStatus === 'not_configured' && !devModeEnabled && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Configuração Incompleta</AlertTitle>
+          <AlertDescription>
+            <p>O sistema de email não está configurado. Contate o administrador.</p>
+            {isDevMode && (
+              <Button 
+                onClick={toggleDevMode} 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+              >
+                <MailWarning className="mr-2 h-4 w-4" />
+                Ativar modo de desenvolvimento
+              </Button>
             )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      {devModeEnabled && (
+        <Alert className="mb-4">
+          <AlertTitle>Modo de Desenvolvimento Ativo</AlertTitle>
+          <AlertDescription>
+            Os emails não serão enviados, mas você pode testar a funcionalidade.
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="clientName">Nome do cliente</Label>
+          <Input
+            id="clientName"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            placeholder="Digite o nome do cliente"
+            required
+            disabled={isSubmitting || (configStatus === 'not_configured' && !devModeEnabled)}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="clientEmail">Email</Label>
+          <Input
+            id="clientEmail"
+            type="email"
+            value={clientEmail}
+            onChange={(e) => setClientEmail(e.target.value)}
+            placeholder="cliente@empresa.com"
+            required
+            disabled={isSubmitting || (configStatus === 'not_configured' && !devModeEnabled)}
+          />
+        </div>
+        
+        {error && <p className="text-sm text-red-500">{error}</p>}
+        
+        <Button 
+          type="submit" 
+          className="w-full"
+          disabled={isSubmitting || (configStatus === 'not_configured' && !devModeEnabled)}
+        >
+          {isSubmitting ? "Enviando..." : "Enviar Convite"}
+        </Button>
+      </form>
+    </div>
   );
 }

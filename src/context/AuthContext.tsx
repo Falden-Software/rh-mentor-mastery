@@ -3,6 +3,7 @@ import { AuthUser } from '@/lib/authTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Profile } from '@/types/profile';
+import { toast } from 'react-toastify';
 
 export interface AuthContextType {
   user: AuthUser | null;
@@ -14,15 +15,16 @@ export interface AuthContextType {
   logout: () => Promise<void>;
   register: (email: string, password: string, name: string, role: "mentor" | "client", company?: string, phone?: string, position?: string, bio?: string) => Promise<AuthUser | null>;
   updateProfile: (data: Partial<AuthUser>) => Promise<void>;
+  toggleDevMode: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDevMode, setIsDevMode] = useState(false);
+  const [isDevMode, setIsDevMode] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
@@ -118,6 +120,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const toggleDevMode = () => {
+    setIsDevMode(prevMode => {
+      const newMode = !prevMode;
+      console.log("Modo de desenvolvimento:", newMode ? "ATIVADO" : "DESATIVADO");
+      
+      if (newMode) {
+        toast({
+          title: "Modo de Desenvolvimento Ativado",
+          description: "Algumas restrições foram desativadas para teste.",
+        });
+      } else {
+        toast({
+          title: "Modo de Desenvolvimento Desativado",
+          description: "O sistema agora está em modo normal.",
+        });
+      }
+      
+      // Salvar no localStorage para persistir entre reloads
+      localStorage.setItem("devMode", newMode.toString());
+      
+      return newMode;
+    });
   };
 
   useEffect(() => {
@@ -253,7 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const value = {
+  const authValue: AuthContextType = {
     user,
     isAuthenticated,
     isLoading,
@@ -262,20 +288,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     login,
     logout,
     register,
-    updateProfile
+    updateProfile,
+    toggleDevMode,
   };
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={authValue}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) {
+    throw new Error("useAuth deve ser usado dentro de um AuthProvider");
   }
   return context;
 };

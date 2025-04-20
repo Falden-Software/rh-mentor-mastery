@@ -26,3 +26,16 @@ export type AuthState = {
   isAuthenticated: boolean;
   isLoading: boolean;
 };
+
+export type AuthContextType = {
+  user: AuthUser | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, userData: object) => Promise<void>;
+  logout: () => Promise<void>;
+  error: string | null;
+  clearError: () => void;
+  isDevMode: boolean;
+  toggleDevMode: () => void;
+};
