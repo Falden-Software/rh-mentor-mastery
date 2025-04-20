@@ -3,7 +3,7 @@ import { AuthUser } from '@/lib/authTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { Profile } from '@/types/profile';
-import { toast } from 'react-toastify';
+import { useToast } from '@/hooks/use-toast';
 
 export interface AuthContextType {
   user: AuthUser | null;
@@ -27,6 +27,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isDevMode, setIsDevMode] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const loadSession = async () => {
     setIsLoading(true);

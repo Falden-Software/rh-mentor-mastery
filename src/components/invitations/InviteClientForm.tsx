@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, MailWarning } from "lucide-react";
-import { createClientInvitation } from "@/services/invitations";
+import { InvitationService } from "@/services/invitationService";
 import { checkEmailConfig } from "@/services/emailConfigService";
 
 interface InviteClientFormProps {
@@ -59,7 +59,11 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
     setError(null);
     
     try {
-      const result = await createClientInvitation(clientEmail, clientName, user);
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
+      
+      const result = await InvitationService.createInvitation(clientEmail, clientName, user);
       
       if (result.success) {
         toast({
