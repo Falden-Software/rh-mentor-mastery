@@ -23,10 +23,16 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
   const [devModeEnabled, setDevModeEnabled] = useState(false);
   
   const { toast } = useToast();
-  const { user, isDevMode } = useAuth();
+  const { user, isDevMode, toggleDevMode } = useAuth();
   
-  // Verificar configuração de email
+  // Verificar configuração de email e status de dev mode
   useEffect(() => {
+    // Checar se o modo de desenvolvimento já está salvo no localStorage
+    const savedDevMode = localStorage.getItem("devMode");
+    if (savedDevMode === "true") {
+      setDevModeEnabled(true);
+    }
+    
     const verifyEmailConfig = async () => {
       try {
         const { configured, error: configError } = await checkEmailConfig();
@@ -95,8 +101,9 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
     }
   };
   
-  const toggleDevMode = () => {
-    setDevModeEnabled(prev => !prev);
+  const handleEnableDevMode = () => {
+    toggleDevMode();
+    setDevModeEnabled(true);
   };
   
   return (
@@ -108,18 +115,16 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Configuração Incompleta</AlertTitle>
           <AlertDescription>
-            <p>O sistema de email não está configurado. Contate o administrador.</p>
-            {isDevMode && (
-              <Button 
-                onClick={toggleDevMode} 
-                variant="outline" 
-                size="sm" 
-                className="mt-2"
-              >
-                <MailWarning className="mr-2 h-4 w-4" />
-                Ativar modo de desenvolvimento
-              </Button>
-            )}
+            <p>O sistema de email não está configurado. Verifique as variáveis de ambiente SMTP.</p>
+            <Button 
+              onClick={handleEnableDevMode} 
+              variant="outline" 
+              size="sm" 
+              className="mt-2"
+            >
+              <MailWarning className="mr-2 h-4 w-4" />
+              Ativar modo de desenvolvimento
+            </Button>
           </AlertDescription>
         </Alert>
       )}

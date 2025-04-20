@@ -38,7 +38,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session) {
         console.log("Sessão encontrada:", session.user.id);
         
-        // Adicionar um pequeno atraso para garantir que as políticas RLS estejam aplicadas
         await new Promise(resolve => setTimeout(resolve, 500));
         
         const { data: profile, error } = await supabase
@@ -52,7 +51,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setIsAuthenticated(false);
           setUser(null);
           
-          // Tentar um fallback usando os metadados do usuário
           const { data: userData } = await supabase.auth.getUser();
           if (userData.user) {
             console.log("Usando dados do usuário como fallback:", userData.user);
@@ -84,7 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } else {
           console.log("Perfil encontrado:", profile);
           setIsAuthenticated(true);
-          // Type casting the profile to ensure TypeScript recognizes all properties
           const typedProfile = profile as Profile;
           
           setUser({
@@ -132,15 +129,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         toast({
           title: "Modo de Desenvolvimento Ativado",
           description: "Algumas restrições foram desativadas para teste.",
+          variant: "default"
         });
       } else {
         toast({
           title: "Modo de Desenvolvimento Desativado",
           description: "O sistema agora está em modo normal.",
+          variant: "default"
         });
       }
       
-      // Salvar no localStorage para persistir entre reloads
       localStorage.setItem("devMode", newMode.toString());
       
       return newMode;
@@ -148,6 +146,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => {
+    const savedDevMode = localStorage.getItem("devMode");
+    if (savedDevMode === "true") {
+      setIsDevMode(true);
+      console.log("Dev mode ativado a partir do localStorage");
+    }
+    
     if (import.meta.env.DEV) {
       setIsDevMode(true);
       console.log("App is running in development mode");
@@ -188,7 +192,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       console.log("Login bem-sucedido, dados:", data);
       
-      // Aguardar um momento para garantir que a sessão seja estabelecida
       await new Promise(resolve => setTimeout(resolve, 500));
       await loadSession();
     } catch (error) {
