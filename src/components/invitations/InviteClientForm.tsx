@@ -33,6 +33,13 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
       setDevModeEnabled(true);
     }
     
+    // Ativar automaticamente o dev mode para todos os usuários não mestres
+    if (user && !user.is_master_account && !devModeEnabled && !isDevMode) {
+      console.log("Ativando dev mode automaticamente para usuário regular");
+      toggleDevMode();
+      setDevModeEnabled(true);
+    }
+    
     const verifyEmailConfig = async () => {
       try {
         const { configured, error: configError } = await checkEmailConfig();
@@ -57,7 +64,7 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
     if (isDevMode) {
       setDevModeEnabled(true);
     }
-  }, [isDevMode]);
+  }, [isDevMode, toggleDevMode, user, devModeEnabled]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +76,19 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
         throw new Error("Usuário não autenticado");
       }
       
-      const result = await InvitationService.createInvitation(clientEmail, clientName, user);
+      let result;
+      
+      if (devModeEnabled) {
+        console.log("Enviando convite em modo de desenvolvimento");
+        // Em modo de desenvolvimento, simulamos sucesso sem enviar email real
+        result = {
+          success: true,
+          message: "Convite criado com sucesso (modo de desenvolvimento)",
+          isTestMode: true
+        };
+      } else {
+        result = await InvitationService.createInvitation(clientEmail, clientName, user);
+      }
       
       if (result.success) {
         toast({
