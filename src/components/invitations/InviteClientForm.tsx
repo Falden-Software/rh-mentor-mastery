@@ -29,16 +29,12 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
   useEffect(() => {
     // Checar se o modo de desenvolvimento já está salvo no localStorage
     const savedDevMode = localStorage.getItem("devMode");
-    if (savedDevMode === "true") {
+    if (savedDevMode === "true" && user?.is_master_account) {
       setDevModeEnabled(true);
     }
     
-    // Ativar automaticamente o dev mode para todos os usuários não mestres
-    if (user && !user.is_master_account && !devModeEnabled && !isDevMode) {
-      console.log("Ativando dev mode automaticamente para usuário regular");
-      toggleDevMode();
-      setDevModeEnabled(true);
-    }
+    // Não permitir ativar automaticamente o dev mode para usuários não mestres
+    // Removido o código que ativava automaticamente
     
     const verifyEmailConfig = async () => {
       try {
@@ -60,11 +56,11 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
     
     verifyEmailConfig();
     
-    // Se estamos em modo de desenvolvimento, ativar o modo de desenvolvimento para o formulário
-    if (isDevMode) {
+    // Só habilitar o modo de desenvolvimento para usuários mestres
+    if (isDevMode && user?.is_master_account) {
       setDevModeEnabled(true);
     }
-  }, [isDevMode, toggleDevMode, user, devModeEnabled]);
+  }, [isDevMode, user]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +74,7 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
       
       let result;
       
-      if (devModeEnabled) {
+      if (devModeEnabled && user.is_master_account) {
         console.log("Enviando convite em modo de desenvolvimento");
         // Em modo de desenvolvimento, simulamos sucesso sem enviar email real
         result = {
@@ -121,8 +117,17 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
   };
   
   const handleEnableDevMode = () => {
-    toggleDevMode();
-    setDevModeEnabled(true);
+    // Apenas usuários mestres podem ativar o modo de desenvolvimento
+    if (user?.is_master_account) {
+      toggleDevMode();
+      setDevModeEnabled(true);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Acesso negado",
+        description: "Apenas contas mestres podem ativar o modo de desenvolvimento.",
+      });
+    }
   };
   
   return (
@@ -135,15 +140,17 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
           <AlertTitle>Configuração Incompleta</AlertTitle>
           <AlertDescription>
             <p>O sistema de email não está configurado. Verifique as variáveis de ambiente SMTP.</p>
-            <Button 
-              onClick={handleEnableDevMode} 
-              variant="outline" 
-              size="sm" 
-              className="mt-2"
-            >
-              <MailWarning className="mr-2 h-4 w-4" />
-              Ativar modo de desenvolvimento
-            </Button>
+            {user?.is_master_account && (
+              <Button 
+                onClick={handleEnableDevMode} 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+              >
+                <MailWarning className="mr-2 h-4 w-4" />
+                Ativar modo de desenvolvimento
+              </Button>
+            )}
           </AlertDescription>
         </Alert>
       )}

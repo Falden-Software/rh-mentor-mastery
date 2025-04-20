@@ -2,7 +2,6 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { AuthUser } from '@/lib/authTypes';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
-import { Profile } from '@/types/profile';
 import { useToast } from '@/hooks/use-toast';
 
 export interface AuthContextType {
@@ -122,6 +121,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const toggleDevMode = () => {
     setIsDevMode(prevMode => {
+      if (!user?.is_master_account) {
+        console.log("Tentativa de ativar modo de desenvolvimento por um usuário não-mestre foi bloqueada");
+        toast({
+          title: "Acesso Negado",
+          description: "Apenas contas mestres podem ativar o modo de desenvolvimento.",
+          variant: "destructive"
+        });
+        return prevMode;
+      }
+
       const newMode = !prevMode;
       console.log("Modo de desenvolvimento:", newMode ? "ATIVADO" : "DESATIVADO");
       
@@ -147,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     const savedDevMode = localStorage.getItem("devMode");
-    if (savedDevMode === "true") {
+    if (savedDevMode === "true" && user?.is_master_account) {
       setIsDevMode(true);
       console.log("Dev mode ativado a partir do localStorage");
     }
