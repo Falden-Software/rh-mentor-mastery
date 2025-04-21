@@ -1,7 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { buildInviteEmailHtml } from "./emailBuilder.ts";
-import { sendWithResend } from "./emailServices.ts";
+import { Resend } from "npm:resend@2.0.0";
+
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,38 +17,27 @@ serve(async (req: Request) => {
   }
 
   try {
-    const { email, clientName, mentorName, mentorCompany } = await req.json();
+    const { email, clientName, mentorName, mentorCompany, registerUrl } = await req.json();
+
+    console.log('Sending invite email to:', email);
 
     // Build email HTML content
-    const emailHtml = buildInviteEmailHtml(clientName, mentorName, mentorCompany);
+    const emailHtml = buildInviteEmailHtml(clientName, mentorName, mentorCompany, registerUrl);
     
     // Send email using Resend
-    const emailResult = await sendWithResend(
-      email,
-      'Convite para a RH Mentor Mastery',
-      emailHtml
-    );
+    const emailResult = await resend.emails.send({
+      from: 'RH Mentor Mastery <onboarding@resend.dev>',
+      to: [email],
+      subject: 'Convite para RH Mentor Mastery',
+      html: emailHtml
+    });
 
-    if (!emailResult.success) {
-      console.error("Erro ao enviar email:", emailResult);
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: emailResult.errorMessage,
-          details: emailResult
-        }),
-        { 
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 500
-        }
-      );
-    }
+    console.log('Email sent successfully:', emailResult);
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Email enviado com sucesso',
-        service: emailResult.service,
+        service: 'Resend',
         id: emailResult.id
       }),
       { 
@@ -56,12 +47,18 @@ serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error("Erro não tratado:", error);
+    console.error("Erro ao enviar email:", error);
+    
+    const isDomainError = error.message?.includes('domain');
+    const isApiKeyError = error.message?.includes('API key');
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'Erro interno do servidor',
-        details: error
+        error: error.message,
+        isDomainError,
+        isApiKeyError,
+        errorDetails: error
       }),
       { 
         headers: { 'Content-Type': 'application/json', ...corsHeaders },

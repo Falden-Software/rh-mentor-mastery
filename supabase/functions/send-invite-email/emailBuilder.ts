@@ -1,3 +1,4 @@
+
 export const buildInviteEmailHtml = (
   clientName: string | undefined, 
   mentorName: string, 
@@ -5,9 +6,7 @@ export const buildInviteEmailHtml = (
   registerUrl?: string
 ) => {
   const clientNameText = clientName ? `Olá ${clientName},` : 'Olá,';
-  
-  // Se registerUrl não for fornecido, usa o domínio padrão
-  const finalRegisterUrl = registerUrl || `https://rhmaster.space/register?type=client`;
+  const finalRegisterUrl = registerUrl || 'https://rhmaster.space/register?type=client';
   
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
