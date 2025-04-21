@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { 
   Table, 
   TableBody, 
@@ -14,35 +13,15 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Mail, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import useNotifications from '@/hooks/useNotifications';
-import { InvitationCode } from '@/types/models';
-import { InvitationService } from '@/services/invitationService';
+import { InvitationService } from '@/services/invitations/invitationService';
 import { useToast } from '@/components/ui/use-toast';
-
-const handleResend = async (inviteId: string, mentorId: string) => {
-  const { toast } = useToast();
-  try {
-    const result = await InvitationService.resendInvitation(inviteId, mentorId);
-    if (result.success) {
-      toast({
-        title: 'Convite reenviado',
-        description: result.message
-      });
-    }
-  } catch (error) {
-    toast({
-      title: 'Erro',
-      description: 'Falha ao reenviar convite',
-      variant: 'destructive'
-    });
-  }
-};
+import { InvitationCode } from '@/types/models';
 
 export function InvitationHistory() {
   const { user } = useAuth();
-  const notify = useNotifications();
+  const { toast } = useToast();
   const [sendingEmails, setSendingEmails] = useState<Record<string, boolean>>({});
   
   const { data: invitations, isLoading, error, refetch } = useQuery({
@@ -58,7 +37,11 @@ export function InvitationHistory() {
         
       if (error) {
         console.error("Erro ao buscar histórico de convites:", error);
-        notify.error("Erro ao carregar histórico de convites");
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar histórico de convites",
+          variant: "destructive"
+        });
         throw error;
       }
       
@@ -66,37 +49,38 @@ export function InvitationHistory() {
     },
     enabled: !!user?.id,
   });
-  
-  if (error) {
-    console.error("Erro na query de convites:", error);
-  }
 
-  // Mutation para reenviar convite
-  const resendMutation = useMutation({
-    mutationFn: async (inviteId: string) => {
+  const handleResend = async (inviteId: string) => {
+    if (!user?.id || sendingEmails[inviteId]) return;
+    
+    try {
       setSendingEmails(prev => ({ ...prev, [inviteId]: true }));
       
-      const { data, error } = await supabase.functions.invoke('resend-invitation', {
-        body: { inviteId }
-      });
+      const result = await InvitationService.resendInvitation(inviteId, user.id);
       
-      if (error || !data?.success) {
-        throw error || new Error(data?.error || "Erro desconhecido");
+      if (result.success) {
+        toast({
+          title: "Sucesso",
+          description: "Convite reenviado com sucesso"
+        });
+        refetch();
+      } else {
+        toast({
+          title: "Erro",
+          description: result.error || "Falha ao reenviar convite",
+          variant: "destructive"
+        });
       }
-      
-      return data;
-    },
-    onSuccess: (data, inviteId) => {
-      notify.success(data.message || "Convite reenviado com sucesso!");
-      setSendingEmails(prev => ({ ...prev, [inviteId]: false }));
-      refetch(); // Atualizar a lista
-    },
-    onError: (error, inviteId) => {
-      console.error("Erro ao reenviar convite:", error);
-      notify.error("Falha ao reenviar convite. Tente novamente mais tarde.");
+    } catch (error: any) {
+      toast({
+        title: "Erro",
+        description: error.message || "Falha ao processar solicitação",
+        variant: "destructive"
+      });
+    } finally {
       setSendingEmails(prev => ({ ...prev, [inviteId]: false }));
     }
-  });
+  };
   
   const formatDate = (dateString: string) => {
     try {
@@ -129,11 +113,6 @@ export function InvitationHistory() {
         <Clock className="h-3 w-3" /> Pendente
       </Badge>
     );
-  };
-  
-  const isInviteExpired = (invite: InvitationCode): boolean => {
-    const expiresAt = new Date(invite.expires_at);
-    return expiresAt < new Date();
   };
 
   if (isLoading) {
@@ -175,7 +154,7 @@ export function InvitationHistory() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleResend(invitation.id, user?.id || '')}
+                    onClick={() => handleResend(invitation.id)}
                     disabled={sendingEmails[invitation.id] || invitation.is_used}
                     className={invitation.is_used ? "opacity-50 cursor-not-allowed" : ""}
                   >

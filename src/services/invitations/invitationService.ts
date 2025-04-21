@@ -27,12 +27,13 @@ export class InvitationService {
         throw new Error("Já existe um convite pendente para este email");
       }
 
-      // Create new invitation
-      const inviteId = uuidv4();
+      // Create new invitation with required code field
+      const inviteCode = uuidv4();
       const { error: insertError } = await supabase
         .from('invitation_codes')
         .insert({
-          id: inviteId,
+          id: inviteCode,
+          code: inviteCode.substring(0, 8), // Generate a shorter code from the UUID
           email,
           mentor_id: mentor.id,
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
@@ -106,13 +107,13 @@ export class InvitationService {
         throw new Error("Erro ao atualizar convite");
       }
 
-      // Resend email
+      // Resend email - using optional chaining for properties that might not exist
       const { data: emailResult, error: emailError } = await supabase.functions.invoke(
         'send-invite-email',
         {
           body: {
             email: invite.email,
-            clientName: invite.name || 'Cliente',
+            clientName: invite.email.split('@')[0], // Fallback if name doesn't exist
             mentorName: invite.mentor?.name || 'Mentor',
             mentorCompany: invite.mentor?.company || 'RH Mentor Mastery',
             registerUrl: `${window.location.origin}/register?type=client&email=${encodeURIComponent(invite.email)}`
@@ -135,7 +136,9 @@ export class InvitationService {
       return {
         success: false,
         error: error.message,
-        errorDetails: error
+        errorDetails: error,
+        isSmtpError: false,
+        isDomainError: false
       };
     }
   }

@@ -65,6 +65,13 @@ export function InviteClientForm({ onInviteSent }: { onInviteSent?: () => void }
     }
   };
 
+  // Safely check for properties that might not exist in the result
+  const hasError = !result?.success && result?.error;
+  const isApiKeyError = hasError && result?.isApiKeyError === true;
+  const isDomainError = hasError && result?.isDomainError === true;
+  // Explicitly check for presence of isSmtpError property before using it
+  const isSmtpError = hasError && 'isSmtpError' in result ? result.isSmtpError : false;
+
   return (
     <div className="space-y-4 p-4">
       <h3 className="text-lg font-medium">Convidar Novo Cliente</h3>
@@ -103,13 +110,13 @@ export function InviteClientForm({ onInviteSent }: { onInviteSent?: () => void }
           />
         )}
         
-        {!result?.success && result?.error && (
+        {hasError && (
           <InviteErrorAlert
             error={result.error}
             errorDetails={result.errorDetails}
-            isApiKeyError={result.isApiKeyError}
-            isDomainError={result.isDomainError}
-            isSmtpError={false}
+            isApiKeyError={isApiKeyError}
+            isDomainError={isDomainError}
+            isSmtpError={isSmtpError}
           />
         )}
         
