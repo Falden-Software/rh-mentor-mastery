@@ -20,7 +20,13 @@ export const sendInviteEmail = async (
     });
     
     if (error) throw error;
-    return data || { success: false, error: 'Resposta inválida do servidor' };
+    return data || { 
+      success: false, 
+      error: 'Resposta inválida do servidor',
+      isSmtpError: false,
+      isDomainError: false,
+      isApiKeyError: false
+    };
   } catch (error) {
     ErrorService.logError('function_error', error, {
       function: 'send-invite-email',
@@ -32,7 +38,9 @@ export const sendInviteEmail = async (
       success: false,
       error: 'Erro interno ao enviar email',
       errorDetails: error,
-      isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email'))
+      isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email')),
+      isDomainError: Boolean(error.message?.includes('domain') || error.message?.includes('domínio')),
+      isApiKeyError: Boolean(error.message?.includes('API key') || error.message?.includes('chave API'))
     };
   }
 };
