@@ -1,5 +1,10 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
+import { InvitationService } from "./invitationService";
+
+// Export the InvitationService for backwards compatibility
+export { InvitationService } from "./invitationService";
 
 /**
  * Cria um convite para um novo cliente
