@@ -2,9 +2,10 @@
 import { supabase } from "@/lib/supabase/client";
 import { AuthUser } from '@/lib/authTypes';
 import { v4 as uuidv4 } from 'uuid';
+import { InvitationResult } from './types';
 
 export class InvitationService {
-  static async createInvitation(email: string, name: string, mentor: AuthUser | null) {
+  static async createInvitation(email: string, name: string, mentor: AuthUser | null): Promise<InvitationResult> {
     try {
       if (!email || !name || !mentor?.id) {
         throw new Error("Email, nome e ID do mentor são obrigatórios");
@@ -67,7 +68,11 @@ export class InvitationService {
         success: true,
         message: "Convite enviado com sucesso",
         service: emailResult.service,
-        id: emailResult.id
+        id: emailResult.id,
+        // Even on success, include these properties with default values
+        isSmtpError: false,
+        isDomainError: false,
+        isApiKeyError: false
       };
       
     } catch (error: any) {
@@ -76,13 +81,14 @@ export class InvitationService {
         success: false,
         error: error.message,
         errorDetails: error,
-        isDomainError: error.message?.includes('domain'),
-        isApiKeyError: error.message?.includes('API key')
+        isDomainError: Boolean(error.message?.includes('domain')),
+        isApiKeyError: Boolean(error.message?.includes('API key')),
+        isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email'))
       };
     }
   }
 
-  static async resendInvitation(inviteId: string, mentorId: string) {
+  static async resendInvitation(inviteId: string, mentorId: string): Promise<InvitationResult> {
     try {
       const { data: invite, error: fetchError } = await supabase
         .from('invitation_codes')
@@ -128,7 +134,10 @@ export class InvitationService {
       return {
         success: true,
         message: "Convite reenviado com sucesso",
-        service: emailResult.service
+        service: emailResult.service,
+        isSmtpError: false,
+        isDomainError: false,
+        isApiKeyError: false
       };
       
     } catch (error: any) {
@@ -137,8 +146,9 @@ export class InvitationService {
         success: false,
         error: error.message,
         errorDetails: error,
-        isSmtpError: false,
-        isDomainError: false
+        isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email')),
+        isDomainError: Boolean(error.message?.includes('domain')),
+        isApiKeyError: Boolean(error.message?.includes('API key'))
       };
     }
   }

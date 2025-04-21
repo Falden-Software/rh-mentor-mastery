@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
-import { InvitationService } from '@/services/invitationService';
+import { InvitationService } from '@/services/invitations';
 
 const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
   const [clientName, setClientName] = useState("");
@@ -73,10 +73,10 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
       } else {
         setErrorMessage(result.error || 'Erro ao enviar convite');
         
-        // Specific error handling
-        if (result.isSmtpError) {
+        // Fix: Safe property access with optional chaining
+        if (result.isSmtpError === true) {
           notify.error('Erro de configuração de email. Contate o administrador.');
-        } else if (result.isDomainError) {
+        } else if (result.isDomainError === true) {
           notify.error('Domínio de email não verificado. Contate o administrador.');
         } else {
           notify.error('Falha ao enviar convite. Tente novamente mais tarde.');

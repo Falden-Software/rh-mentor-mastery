@@ -22,6 +22,7 @@ export interface InvitationResult {
   actualRecipient?: string;
   intendedRecipient?: string;
   service?: string;
+  id?: string;
 }
 
 export interface EmailResult {
@@ -33,6 +34,8 @@ export interface EmailResult {
   service?: string;
   isSmtpError?: boolean;
   isDomainError?: boolean;
+  isApiKeyError?: boolean;
+  id?: string;
 }
 
 export interface InviteCreateParams {
