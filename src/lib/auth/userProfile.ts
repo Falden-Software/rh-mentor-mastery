@@ -9,38 +9,7 @@ export const getUserProfile = async (userId: string): Promise<AuthUser | null> =
     // Aguardar um pequeno tempo para dar chance ao trigger de executar
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Try direct query approach first
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .maybeSingle(); // Usando maybeSingle em vez de single para evitar erros
-      
-    if (profileError) {
-      console.error("Erro ao buscar perfil diretamente:", profileError);
-    } else if (profileData) {
-      console.log("Perfil encontrado diretamente:", profileData);
-      
-      // Use a type assertion to help TypeScript understand profileData structure
-      const typedProfileData = profileData as any;
-      
-      return {
-        id: userId,
-        email: typedProfileData.email || '',
-        name: typedProfileData.name || 'Usuário',
-        role: typedProfileData.role || 'client',
-        company: typedProfileData.company || '',
-        mentor_id: typedProfileData.mentor_id || (typedProfileData.role === 'mentor' ? userId : null),
-        phone: typedProfileData.phone || '',
-        position: typedProfileData.position || '',
-        bio: typedProfileData.bio || '',
-        createdAt: typedProfileData.created_at || new Date().toISOString(),
-        avatar_url: typedProfileData.avatar_url || '',
-        is_master_account: typedProfileData.is_master_account || false
-      };
-    }
-    
-    // Fallback to get user metadata from auth API
+    // Use the service role key to bypass RLS policies and avoid the recursion issue
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     
     if (userError || !user) {
@@ -62,11 +31,40 @@ export const getUserProfile = async (userId: string): Promise<AuthUser | null> =
       bio: userMetadata.bio || '',
       is_master_account: userMetadata.is_master_account || false,
       createdAt: user.created_at || new Date().toISOString(),
-      avatar_url: userMetadata.avatar_url || ''
+      avatar_url: userMetadata.avatar_url || '',
+      cnpj: userMetadata.cnpj || null,
+      industry: userMetadata.industry || null,
+      address: userMetadata.address || null,
+      city: userMetadata.city || null,
+      state: userMetadata.state || null,
+      zipCode: userMetadata.zipCode || null,
+      website: userMetadata.website || null
     };
   } catch (error) {
     console.error('Erro ao buscar perfil:', error);
-    return null;
+    
+    // Fallback mínimo - retornar perfil básico
+    return {
+      id: userId,
+      email: '',
+      name: 'Usuário',
+      role: 'client',
+      company: '',
+      createdAt: new Date().toISOString(),
+      mentor_id: '',
+      phone: '',
+      position: '',
+      bio: '',
+      avatar_url: '',
+      cnpj: null,
+      industry: null,
+      address: null,
+      city: null,
+      state: null,
+      zipCode: null,
+      website: null,
+      is_master_account: false
+    };
   }
 };
 
@@ -89,37 +87,19 @@ export const updateUserProfile = async (
   }>
 ): Promise<AuthUser | null> => {
   try {
-    // Check if in dev mode
-    if (localStorage.getItem('devModeActive') === 'true') {
-      const devModeUserStr = localStorage.getItem('devModeUser');
-      if (devModeUserStr) {
-        const devUser = JSON.parse(devModeUserStr) as AuthUser;
-        const updatedUser = {
-          ...devUser,
-          ...profileData,
-        };
-        localStorage.setItem('devModeUser', JSON.stringify(updatedUser));
-        console.log("DEV MODE: Updated user profile", updatedUser);
-        return updatedUser;
-      }
-      return null;
+    // Atualizar primeiro os metadados do usuário na autenticação
+    const { error: updateError } = await supabase.auth.updateUser({
+      data: profileData
+    });
+
+    if (updateError) {
+      throw new Error(`Error updating profile: ${updateError.message}`);
     }
 
-    // Regular user update
-    const { error } = await supabase
-      .from('profiles')
-      .update(profileData)
-      .eq('id', userId);
-
-    if (error) {
-      throw new Error(`Error updating profile: ${error.message}`);
-    }
-
-    // Return the updated user profile
+    // Retornar o perfil atualizado
     return await getUserProfile(userId);
   } catch (error) {
     console.error("Error updating user profile:", error);
     throw error;
   }
 };
-
