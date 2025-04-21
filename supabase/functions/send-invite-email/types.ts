@@ -14,6 +14,9 @@ export interface EmailResult {
   error?: any;
   errorCode?: string;
   errorMessage?: string;
+  isSmtpError?: boolean;
+  isDomainError?: boolean;
+  isApiKeyError?: boolean;
 }
 
 export const corsHeaders = {

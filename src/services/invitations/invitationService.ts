@@ -69,7 +69,6 @@ export class InvitationService {
         message: "Convite enviado com sucesso",
         service: emailResult.service,
         id: emailResult.id,
-        // Even on success, include these properties with default values
         isSmtpError: false,
         isDomainError: false,
         isApiKeyError: false

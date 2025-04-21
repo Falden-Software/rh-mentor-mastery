@@ -15,9 +15,9 @@ export interface InvitationResult {
   error?: string;
   errorDetails?: any;
   message?: string;
-  isApiKeyError?: boolean;
-  isDomainError?: boolean;
-  isSmtpError?: boolean;
+  isApiKeyError: boolean;
+  isDomainError: boolean;
+  isSmtpError: boolean;
   isTestMode?: boolean;
   actualRecipient?: string;
   intendedRecipient?: string;
@@ -32,9 +32,9 @@ export interface EmailResult {
   actualRecipient?: string;
   errorDetails?: any;
   service?: string;
-  isSmtpError?: boolean;
-  isDomainError?: boolean;
-  isApiKeyError?: boolean;
+  isSmtpError: boolean;
+  isDomainError: boolean;
+  isApiKeyError: boolean;
   id?: string;
 }
 

@@ -2,8 +2,7 @@
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { buildInviteEmailHtml } from "./emailBuilder.ts";
 import { Resend } from "npm:resend@2.0.0";
-import { EmailRequestBody, EmailResult } from "./types.ts";
-import { corsHeaders } from "./types.ts";
+import { EmailRequestBody, EmailResult, corsHeaders } from "./types.ts";
 
 // Initialize Resend with API key from environment variable
 const resendApiKey = Deno.env.get("RESEND_API_KEY");
@@ -22,7 +21,9 @@ serve(async (req: Request) => {
         JSON.stringify({
           success: false,
           error: 'Resend API key not configured',
-          isApiKeyError: true
+          isApiKeyError: true,
+          isDomainError: false,
+          isSmtpError: false
         }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
       );
@@ -39,7 +40,13 @@ serve(async (req: Request) => {
 
     if (!email) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Email address is required' }),
+        JSON.stringify({
+          success: false,
+          error: 'Email address is required',
+          isApiKeyError: false,
+          isDomainError: false,
+          isSmtpError: false
+        }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
       );
     }
@@ -67,13 +74,17 @@ serve(async (req: Request) => {
       // Check for specific error types
       const isDomainError = resendError.message?.includes('domain');
       const isApiKeyError = resendError.message?.includes('API key');
+      const isSmtpError = resendError.message?.includes('SMTP') || 
+                          resendError.message?.includes('email') ||
+                          resendError.message?.includes('server');
       
       return new Response(
         JSON.stringify({
           success: false,
           error: resendError.message,
-          isDomainError,
-          isApiKeyError
+          isDomainError: Boolean(isDomainError),
+          isApiKeyError: Boolean(isApiKeyError),
+          isSmtpError: Boolean(isSmtpError)
         }),
         { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
       );
@@ -84,7 +95,10 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: true,
         service: 'Resend',
-        id: emailData?.id
+        id: emailData?.id,
+        isApiKeyError: false,
+        isDomainError: false,
+        isSmtpError: false
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
     );
@@ -96,7 +110,10 @@ serve(async (req: Request) => {
       JSON.stringify({
         success: false,
         error: error.message,
-        errorDetails: error
+        errorDetails: error,
+        isApiKeyError: false,
+        isDomainError: false,
+        isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email') || error.message?.includes('server'))
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 500 }
     );

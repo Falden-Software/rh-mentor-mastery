@@ -73,10 +73,10 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
       } else {
         setErrorMessage(result.error || 'Erro ao enviar convite');
         
-        // Fix: Safe property access with optional chaining
-        if (result.isSmtpError === true) {
+        // Agora usamos comparação estrita com verificação de tipo booleano
+        if (result.isSmtpError) {
           notify.error('Erro de configuração de email. Contate o administrador.');
-        } else if (result.isDomainError === true) {
+        } else if (result.isDomainError) {
           notify.error('Domínio de email não verificado. Contate o administrador.');
         } else {
           notify.error('Falha ao enviar convite. Tente novamente mais tarde.');
