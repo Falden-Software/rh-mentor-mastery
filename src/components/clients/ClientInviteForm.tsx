@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { InvitationService } from '@/services/invitations';
+import { InvitationService } from '@/services/invitationService';
 
 interface ClientInviteFormProps {
   onInviteSent: () => void;
@@ -44,6 +44,8 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     setErrorMessage(null);
 
     try {
+      console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName}`);
+      
       const result = await InvitationService.createInvitation(
         clientEmail, 
         clientName, 
@@ -51,25 +53,18 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
       );
       
       if (result.success) {
+        console.log("Convite enviado com sucesso:", result);
         toast.success("Convite enviado com sucesso!");
         setClientEmail('');
         setClientName('');
         onInviteSent();
       } else {
+        console.error("Erro no resultado do convite:", result);
         setErrorMessage(result.error || 'Erro ao enviar convite');
-        
-        if (result.isSmtpError) {
-          toast.error('Erro de configuração de email. Contate o administrador.');
-        } else if (result.isDomainError) {
-          toast.error('Domínio de email não verificado. Contate o administrador.');
-        } else if (result.isApiKeyError) {
-          toast.error('Problema com a chave da API. Contate o administrador.');
-        } else {
-          toast.error('Falha ao enviar convite. Tente novamente mais tarde.');
-        }
+        toast.error(result.error || 'Erro ao enviar convite');
       }
     } catch (error: any) {
-      console.error('Erro ao criar convite:', error);
+      console.error('Erro durante a submissão do convite:', error);
       setErrorMessage('Erro interno ao processar convite');
       toast.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {

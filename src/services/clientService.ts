@@ -5,19 +5,22 @@ import { ErrorService } from "./errorService";
 import { Profile } from "@/types/profile";
 
 /**
- * Obtém a lista de clientes de um mentor usando RPC
+ * Obtém a lista de clientes de um mentor usando SELECT direto
+ * Isso evita problemas com a função RPC se houver alguma questão
  */
 export const getMentorClients = async (mentorId: string): Promise<Profile[]> => {
   try {
     console.log(`Buscando clientes para o mentor: ${mentorId}`);
     
+    // Usar método direto em vez da função RPC para evitar problemas
     const { data: clientsData, error } = await supabase
-      .rpc('get_mentor_clients', { 
-        input_mentor_id: mentorId  
-      });
+      .from('profiles')
+      .select('*')
+      .eq('mentor_id', mentorId)
+      .eq('role', 'client');
 
     if (error) {
-      console.error("Erro ao buscar clientes via RPC:", error);
+      console.error("Erro ao buscar clientes:", error);
       ErrorService.logError("database_error", error, { 
         function: 'getMentorClients',
         mentorId 
