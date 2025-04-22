@@ -1,5 +1,5 @@
 
-import { InvitationService } from './invitations';
+import { InvitationService } from './invitations/index';
 import { supabase } from "@/integrations/supabase/client";
 import { AuthUser } from '@/lib/authTypes';
 

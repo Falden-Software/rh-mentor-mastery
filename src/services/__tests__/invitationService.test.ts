@@ -1,7 +1,7 @@
 
 // This is a placeholder file - tests will be implemented later
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { InvitationService } from '../invitations';
+import { InvitationService } from '../invitations/index';
 import { AuthUser } from '@/lib/authTypes';
 
 // Mock the SupabaseAPI

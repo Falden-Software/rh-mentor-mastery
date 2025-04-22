@@ -1,8 +1,11 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { v4 as uuidv4 } from "uuid";
 
-// Export the InvitationService for backwards compatibility
-export { InvitationService } from "./invitations";
+// Don't import InvitationService from itself - it creates a circular import
+// Instead import from the index file where it's actually defined
+import { InvitationService } from "./invitations/index";
+export { InvitationService };
 
 /**
  * Cria um convite para um novo cliente
