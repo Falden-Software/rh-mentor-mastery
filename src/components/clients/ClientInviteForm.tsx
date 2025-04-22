@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
-import { InvitationService } from '@/services/invitationService';
+import { InvitationService } from '@/services/invitations';
 import { StatusAlert } from '@/components/ui/status-alert';
 
 interface ClientInviteFormProps {

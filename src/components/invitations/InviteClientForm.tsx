@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -17,15 +16,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { InvitationService } from '@/services/invitations/invitationService';
+import { InvitationService } from '@/services/invitations';
 
-// Define the form schema directly to avoid import issues
 const formSchema = z.object({
   name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres" }),
   email: z.string().email({ message: "Email inválido" }),
 });
 
-// Create a type from the schema
 type InviteFormData = z.infer<typeof formSchema>;
 
 interface InviteClientFormProps {
@@ -37,7 +34,6 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Initialize the form
   const form = useForm<InviteFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -69,10 +65,8 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
         
         form.reset();
         
-        // Call the onInviteSent callback if provided
         if (onInviteSent) onInviteSent();
       } else {
-        // Show specific error messages based on the error type
         if (result.isApiKeyError) {
           toast({
             title: "Erro de configuração",
