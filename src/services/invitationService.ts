@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { AuthUser } from "@/lib/authTypes";
 import { ErrorService } from "./errorService";
@@ -152,7 +151,7 @@ export class InvitationService {
       };
     } catch (error: any) {
       console.error("Erro ao reenviar convite:", error);
-      ErrorService.logError("invitation_resend_error", error, { inviteId, mentorId });
+      ErrorService.logError("invitation_error", error, { inviteId, mentorId });
       
       return {
         success: false,
