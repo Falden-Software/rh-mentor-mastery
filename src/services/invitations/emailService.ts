@@ -15,11 +15,16 @@ export const sendInviteEmail = async (
         clientName: name || 'Cliente',
         mentorName: mentorName || 'Mentor',
         mentorCompany: 'RH Mentor Mastery',
-        registerUrl: `https://rh-mentor-mastery.vercel.app/register?type=client&email=${encodeURIComponent(email)}`
+        registerUrl: `${window.location.origin}/register?type=client&email=${encodeURIComponent(email)}`
       }
     });
     
-    if (error) throw error;
+    if (error) {
+      console.error("Function invocation error:", error);
+      throw error;
+    }
+    
+    // Make sure we return a complete EmailResult object
     return data || { 
       success: false, 
       error: 'Resposta inválida do servidor',
@@ -34,13 +39,17 @@ export const sendInviteEmail = async (
       name
     });
     
+    // Extract error message for classification
+    const errorMsg = error.message || '';
+    
+    // Ensure all required properties are included in the error response
     return {
       success: false,
       error: 'Erro interno ao enviar email',
       errorDetails: error,
-      isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email')),
-      isDomainError: Boolean(error.message?.includes('domain') || error.message?.includes('domínio')),
-      isApiKeyError: Boolean(error.message?.includes('API key') || error.message?.includes('chave API'))
+      isSmtpError: Boolean(errorMsg.includes('SMTP') || errorMsg.includes('email')),
+      isDomainError: Boolean(errorMsg.includes('domain') || errorMsg.includes('domínio')),
+      isApiKeyError: Boolean(errorMsg.includes('API key') || errorMsg.includes('chave API'))
     };
   }
 };

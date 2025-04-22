@@ -17,6 +17,7 @@ serve(async (req: Request) => {
   try {
     // Check if API key is configured
     if (!resendApiKey) {
+      console.error("Resend API key not configured");
       return new Response(
         JSON.stringify({
           success: false,
@@ -39,6 +40,7 @@ serve(async (req: Request) => {
     }: EmailRequestBody = await req.json();
 
     if (!email) {
+      console.error("Email address is required");
       return new Response(
         JSON.stringify({
           success: false,

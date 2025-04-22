@@ -3,6 +3,8 @@ import { supabase } from "@/lib/supabase/client";
 import { AuthUser } from '@/lib/authTypes';
 import { v4 as uuidv4 } from 'uuid';
 import { InvitationResult } from './types';
+import { sendInviteEmail } from './emailService';
+import { ErrorService } from '../errorService';
 
 export class InvitationService {
   static async createInvitation(email: string, name: string, mentor: AuthUser | null): Promise<InvitationResult> {
@@ -14,7 +16,7 @@ export class InvitationService {
       // Check for existing pending invites
       const { data: existingInvites, error: checkError } = await supabase
         .from('invitation_codes')
-        .select('*')
+        .select('id, code, expires_at')
         .eq('email', email)
         .eq('mentor_id', mentor.id)
         .is('used_by', null);
@@ -24,44 +26,55 @@ export class InvitationService {
         throw new Error("Erro ao verificar convites existentes");
       }
       
+      let inviteCode = '';
+      
+      // If invitation already exists, update it instead of creating a new one
       if (existingInvites && existingInvites.length > 0) {
-        throw new Error("Já existe um convite pendente para este email");
-      }
-
-      // Create new invitation with required code field
-      const inviteCode = uuidv4();
-      const { error: insertError } = await supabase
-        .from('invitation_codes')
-        .insert({
-          id: inviteCode,
-          code: inviteCode.substring(0, 8), // Generate a shorter code from the UUID
-          email,
-          mentor_id: mentor.id,
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
-        });
-
-      if (insertError) {
-        console.error("Erro ao criar convite:", insertError);
-        throw new Error("Erro ao criar convite no banco de dados");
-      }
-
-      // Send invitation email
-      const { data: emailResult, error: emailError } = await supabase.functions.invoke(
-        'send-invite-email',
-        {
-          body: {
-            email,
-            clientName: name,
-            mentorName: mentor.name,
-            mentorCompany: mentor.company || 'RH Mentor Mastery',
-            registerUrl: `${window.location.origin}/register?type=client&email=${encodeURIComponent(email)}`
-          }
+        console.log("Convite existente encontrado, atualizando...");
+        const existingInvite = existingInvites[0];
+        inviteCode = existingInvite.id;
+        
+        // Update the existing invitation with new expiry date
+        const { error: updateError } = await supabase
+          .from('invitation_codes')
+          .update({
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+          })
+          .eq('id', inviteCode);
+          
+        if (updateError) {
+          console.error("Erro ao atualizar convite existente:", updateError);
+          throw new Error("Erro ao atualizar convite existente");
         }
+      } else {
+        // Create new invitation with required code field
+        inviteCode = uuidv4();
+        const { error: insertError } = await supabase
+          .from('invitation_codes')
+          .insert({
+            id: inviteCode,
+            code: inviteCode.substring(0, 8), // Generate a shorter code from the UUID
+            email,
+            mentor_id: mentor.id,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
+          });
+
+        if (insertError) {
+          console.error("Erro ao criar convite:", insertError);
+          throw new Error("Erro ao criar convite no banco de dados");
+        }
+      }
+
+      // Send invitation email using the email service
+      const emailResult = await sendInviteEmail(
+        email,
+        name,
+        mentor.name
       );
 
-      if (emailError || !emailResult?.success) {
-        console.error("Erro ao enviar email:", emailError || emailResult?.error);
-        throw new Error(emailResult?.error || "Erro ao enviar email de convite");
+      if (!emailResult.success) {
+        console.error("Erro ao enviar email:", emailResult.error);
+        throw new Error(emailResult.error || "Erro ao enviar email de convite");
       }
 
       return {
@@ -80,8 +93,8 @@ export class InvitationService {
         success: false,
         error: error.message,
         errorDetails: error,
-        isDomainError: Boolean(error.message?.includes('domain')),
-        isApiKeyError: Boolean(error.message?.includes('API key')),
+        isDomainError: Boolean(error.message?.includes('domain') || error.message?.includes('domínio')),
+        isApiKeyError: Boolean(error.message?.includes('API key') || error.message?.includes('chave')),
         isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email'))
       };
     }
@@ -97,6 +110,7 @@ export class InvitationService {
         .single();
 
       if (fetchError || !invite) {
+        console.error("Erro ao buscar convite:", fetchError);
         throw new Error("Convite não encontrado");
       }
 
@@ -104,30 +118,25 @@ export class InvitationService {
       const { error: updateError } = await supabase
         .from('invitation_codes')
         .update({
-          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
         })
         .eq('id', inviteId);
 
       if (updateError) {
+        console.error("Erro ao atualizar convite:", updateError);
         throw new Error("Erro ao atualizar convite");
       }
 
-      // Resend email - using optional chaining for properties that might not exist
-      const { data: emailResult, error: emailError } = await supabase.functions.invoke(
-        'send-invite-email',
-        {
-          body: {
-            email: invite.email,
-            clientName: invite.email.split('@')[0], // Fallback if name doesn't exist
-            mentorName: invite.mentor?.name || 'Mentor',
-            mentorCompany: invite.mentor?.company || 'RH Mentor Mastery',
-            registerUrl: `${window.location.origin}/register?type=client&email=${encodeURIComponent(invite.email)}`
-          }
-        }
+      // Use email service to resend invitation
+      const emailResult = await sendInviteEmail(
+        invite.email,
+        invite.email.split('@')[0], // Fallback if name doesn't exist
+        invite.mentor?.name || 'Mentor'
       );
 
-      if (emailError || !emailResult?.success) {
-        throw new Error(emailResult?.error || "Erro ao reenviar email");
+      if (!emailResult.success) {
+        console.error("Erro ao reenviar email:", emailResult);
+        throw new Error(emailResult.error || "Erro ao reenviar email");
       }
 
       return {
@@ -141,13 +150,15 @@ export class InvitationService {
       
     } catch (error: any) {
       console.error("Erro ao reenviar convite:", error);
+      ErrorService.logError('resend_invitation_error', error, { inviteId, mentorId });
+      
       return {
         success: false,
         error: error.message,
         errorDetails: error,
         isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email')),
-        isDomainError: Boolean(error.message?.includes('domain')),
-        isApiKeyError: Boolean(error.message?.includes('API key'))
+        isDomainError: Boolean(error.message?.includes('domain') || error.message?.includes('domínio')),
+        isApiKeyError: Boolean(error.message?.includes('API key') || error.message?.includes('chave'))
       };
     }
   }

@@ -10,6 +10,7 @@ export const inviteSchema = z.object({
 
 export type InviteData = z.infer<typeof inviteSchema>;
 
+// Make sure all result types have consistent error properties
 export interface InvitationResult {
   success: boolean;
   error?: string;
