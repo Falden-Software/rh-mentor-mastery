@@ -5,7 +5,7 @@ export type ErrorType =
   | 'database_error' 
   | 'function_error'
   | 'invitation_error'
-  | 'invitation_resend_error'  // Add this new error type
+  | 'invitation_resend_error'  
   | 'email_error'
   | 'api_error'
   | 'validation_error'

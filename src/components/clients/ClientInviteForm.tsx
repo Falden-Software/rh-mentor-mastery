@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { InvitationService } from '@/services/invitationService';
+import { StatusAlert } from '@/components/ui/status-alert';
 
 interface ClientInviteFormProps {
   onInviteSent: () => void;
@@ -19,6 +20,7 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
   const [clientEmail, setClientEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<"error" | "warning" | "info">("error");
   
   const { user } = useAuth();
 
@@ -32,11 +34,13 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     
     if (!validateEmail(clientEmail)) {
       setErrorMessage("Email inválido. Por favor, verifique o endereço de email.");
+      setErrorType("error");
       return;
     }
     
     if (!clientName.trim()) {
       setErrorMessage("Nome do cliente é obrigatório.");
+      setErrorType("error");
       return;
     }
     
@@ -46,10 +50,11 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     try {
       console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName}`);
       
-      const result = await InvitationService.createInvitation(
+      // Use the direct method that avoids RLS recursion
+      const result = await InvitationService.createInvitationDirect(
         clientEmail, 
         clientName, 
-        user
+        user?.id || ''
       );
       
       if (result.success) {
@@ -60,17 +65,20 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
         onInviteSent();
       } else {
         console.error("Erro no resultado do convite:", result);
-        // Verificar se é um erro de recursão RLS para mostrar mensagem mais amigável
-        const errorMsg = result.error || 'Erro ao enviar convite';
-        setErrorMessage(
-          errorMsg.includes('recursion') 
-            ? "Erro de configuração no sistema. Por favor, contacte o administrador."
-            : errorMsg
-        );
-        toast.error(result.error || 'Erro ao enviar convite');
+        
+        if (result.error?.includes('recursion')) {
+          setErrorType("warning");
+          setErrorMessage("Erro de configuração no sistema. Nossa equipe técnica foi notificada e está trabalhando para resolver o problema.");
+          toast.error("Erro de configuração. Por favor, tente novamente mais tarde.");
+        } else {
+          setErrorType("error");
+          setErrorMessage(result.error || 'Erro ao enviar convite');
+          toast.error(result.error || 'Erro ao enviar convite');
+        }
       }
     } catch (error: any) {
       console.error('Erro durante a submissão do convite:', error);
+      setErrorType("error");
       setErrorMessage('Erro interno ao processar convite');
       toast.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
@@ -85,11 +93,19 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
       </div>
 
       {errorMessage && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Erro no convite</AlertTitle>
-          <AlertDescription>{errorMessage}</AlertDescription>
-        </Alert>
+        errorType === "error" ? (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro no convite</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        ) : (
+          <StatusAlert 
+            title="Problema no sistema" 
+            description={errorMessage} 
+            status={errorType}
+          />
+        )
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">

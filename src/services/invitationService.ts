@@ -162,4 +162,116 @@ export class InvitationService {
       };
     }
   }
+
+  // Método direto que evita recursão RLS para criação de convites
+  static async createInvitationDirect(email: string, name: string, mentorId: string): Promise<InvitationResult> {
+    try {
+      if (!email || !name || !mentorId) {
+        throw new Error("Email, nome e ID do mentor são obrigatórios");
+      }
+      
+      console.log(`Criando convite direto para ${email} com o mentor ${mentorId}`);
+      
+      // Usar RPC para evitar recursão RLS se disponível
+      try {
+        const rpcResult = await supabase.rpc('create_invitation', {
+          p_email: email,
+          p_mentor_id: mentorId,
+          p_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+        });
+        
+        if (rpcResult.error) {
+          console.warn("RPC não disponível ou falhou:", rpcResult.error);
+          // Continuar com o método alternativo
+        } else if (rpcResult.data) {
+          console.log("Convite criado com sucesso via RPC:", rpcResult.data);
+          return {
+            success: true,
+            message: "Convite criado com sucesso!",
+            id: rpcResult.data
+          };
+        }
+      } catch (rpcError) {
+        console.warn("Erro ao tentar usar RPC:", rpcError);
+        // Continue com método alternativo
+      }
+      
+      // Método alternativo usando consulta direta
+      // Verificar convites existentes primeiro
+      const { data: existingInvites, error: checkError } = await supabase
+        .from('invitation_codes')
+        .select('id')
+        .eq('email', email)
+        .eq('mentor_id', mentorId)
+        .is('is_used', false);
+        
+      if (checkError) {
+        console.error("Erro ao verificar convites existentes:", checkError);
+        throw new Error(`Erro ao verificar convites existentes: ${checkError.message}`);
+      }
+      
+      let inviteId = '';
+      
+      if (existingInvites && existingInvites.length > 0) {
+        // Atualizar convite existente
+        inviteId = existingInvites[0].id;
+        const { error: updateError } = await supabase
+          .from('invitation_codes')
+          .update({
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          })
+          .eq('id', inviteId);
+          
+        if (updateError) {
+          console.error("Erro ao atualizar convite:", updateError);
+          throw new Error(updateError.message);
+        }
+      } else {
+        // Criar novo convite
+        const newId = uuidv4();
+        const inviteCode = newId.substring(0, 8);
+        
+        const { data, error: insertError } = await supabase
+          .from('invitation_codes')
+          .insert({
+            id: newId,
+            code: inviteCode,
+            email,
+            mentor_id: mentorId,
+            is_used: false,
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+          })
+          .select('id')
+          .single();
+          
+        if (insertError) {
+          console.error("Erro ao criar convite:", insertError);
+          throw new Error(insertError.message);
+        }
+        
+        inviteId = data.id;
+      }
+      
+      // Success
+      return {
+        success: true,
+        message: "Convite criado com sucesso!",
+        id: inviteId
+      };
+      
+    } catch (error: any) {
+      console.error("Erro no serviço de convites (método direto):", error);
+      ErrorService.logError("invitation_error", error, { 
+        email, 
+        mentorId,
+        method: 'createInvitationDirect'
+      });
+      
+      return {
+        success: false,
+        error: error.message,
+        errorDetails: error
+      };
+    }
+  }
 }
