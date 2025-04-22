@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { AuthUser } from "@/lib/authTypes";
 import { ErrorService } from "./errorService";
@@ -108,7 +107,6 @@ export class InvitationService {
     }
   }
 
-  // Método para reenvio de convites
   static async resendInvitation(inviteId: string, mentorId: string): Promise<InvitationResult> {
     try {
       if (!inviteId || !mentorId) {
@@ -163,7 +161,6 @@ export class InvitationService {
     }
   }
 
-  // Método direto que evita recursão RLS para criação de convites
   static async createInvitationDirect(email: string, name: string, mentorId: string): Promise<InvitationResult> {
     try {
       if (!email || !name || !mentorId) {
@@ -172,68 +169,22 @@ export class InvitationService {
       
       console.log(`Criando convite direto para ${email} com o mentor ${mentorId}`);
       
-      // Remover tentativa de usar RPC que não existe
-      // Método alternativo usando consulta direta
-      // Verificar convites existentes primeiro
-      const { data: existingInvites, error: checkError } = await supabase
-        .from('invitation_codes')
-        .select('id')
-        .eq('email', email)
-        .eq('mentor_id', mentorId)
-        .is('is_used', false);
-        
-      if (checkError) {
-        console.error("Erro ao verificar convites existentes:", checkError);
-        throw new Error(`Erro ao verificar convites existentes: ${checkError.message}`);
-      }
+      // Use the new RPC function to create invitation
+      const { data: inviteId, error: rpcError } = await supabase.rpc('create_client_invitation', {
+        p_email: email,
+        p_mentor_id: mentorId
+      });
       
-      let inviteId = '';
-      
-      if (existingInvites && existingInvites.length > 0) {
-        // Atualizar convite existente
-        inviteId = existingInvites[0].id;
-        const { error: updateError } = await supabase
-          .from('invitation_codes')
-          .update({
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-          })
-          .eq('id', inviteId);
-          
-        if (updateError) {
-          console.error("Erro ao atualizar convite:", updateError);
-          throw new Error(updateError.message);
-        }
-      } else {
-        // Criar novo convite
-        const newId = uuidv4();
-        const inviteCode = newId.substring(0, 8);
-        
-        const { data, error: insertError } = await supabase
-          .from('invitation_codes')
-          .insert({
-            id: newId,
-            code: inviteCode,
-            email,
-            mentor_id: mentorId,
-            is_used: false,
-            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-          })
-          .select('id')
-          .single();
-          
-        if (insertError) {
-          console.error("Erro ao criar convite:", insertError);
-          throw new Error(insertError.message);
-        }
-        
-        inviteId = data.id;
+      if (rpcError) {
+        console.error("Erro ao criar convite via RPC:", rpcError);
+        throw new Error(`Erro ao criar convite: ${rpcError.message}`);
       }
       
       // Success
       return {
         success: true,
         message: "Convite criado com sucesso!",
-        id: inviteId
+        id: inviteId as string
       };
       
     } catch (error: any) {

@@ -464,6 +464,10 @@ export type Database = {
         Args: { client_id: string; test_id: string }
         Returns: boolean
       }
+      create_client_invitation: {
+        Args: { p_email: string; p_mentor_id: string; p_expires_at?: string }
+        Returns: string
+      }
       create_master_accounts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
