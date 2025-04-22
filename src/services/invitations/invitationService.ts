@@ -1,5 +1,5 @@
 
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from '@/lib/supabase/client';
 import { AuthUser } from '@/lib/authTypes';
 import { v4 as uuidv4 } from 'uuid';
 import { InvitationResult } from './types';
@@ -26,13 +26,13 @@ export class InvitationService {
         throw new Error("Erro ao verificar convites existentes");
       }
       
-      let inviteCode = '';
+      let inviteId = '';
       
       // If invitation already exists, update it instead of creating a new one
       if (existingInvites && existingInvites.length > 0) {
         console.log("Convite existente encontrado, atualizando...");
         const existingInvite = existingInvites[0];
-        inviteCode = existingInvite.id;
+        inviteId = existingInvite.id;
         
         // Update the existing invitation with new expiry date
         const { error: updateError } = await supabase
@@ -40,7 +40,7 @@ export class InvitationService {
           .update({
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
           })
-          .eq('id', inviteCode);
+          .eq('id', inviteId);
           
         if (updateError) {
           console.error("Erro ao atualizar convite existente:", updateError);
@@ -48,12 +48,12 @@ export class InvitationService {
         }
       } else {
         // Create new invitation with required code field
-        inviteCode = uuidv4();
+        inviteId = uuidv4();
         const { error: insertError } = await supabase
           .from('invitation_codes')
           .insert({
-            id: inviteCode,
-            code: inviteCode.substring(0, 8), // Generate a shorter code from the UUID
+            id: inviteId,
+            code: inviteId.substring(0, 8), // Generate a shorter code from the UUID
             email,
             mentor_id: mentor.id,
             expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days

@@ -1,11 +1,13 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { AuthUser } from "@/lib/authTypes";
+import { ErrorService } from "./errorService";
+import { Profile } from "@/types/profile";
 
 /**
  * Obtém a lista de clientes de um mentor usando RPC
  */
-export const getMentorClients = async (mentorId: string) => {
+export const getMentorClients = async (mentorId: string): Promise<Profile[]> => {
   try {
     console.log(`Buscando clientes para o mentor: ${mentorId}`);
     
@@ -15,21 +17,27 @@ export const getMentorClients = async (mentorId: string) => {
       });
 
     if (error) {
-      console.error("Erro ao buscar clientes:", error);
+      ErrorService.logError("database_error", error, { 
+        function: 'getMentorClients',
+        mentorId 
+      });
       throw error;
     }
     
     return clientsData || [];
   } catch (error) {
-    console.error("Erro ao buscar clientes:", error);
-    return [];
+    ErrorService.logError("database_error", error, { 
+      function: 'getMentorClients',
+      mentorId 
+    });
+    throw error;
   }
 };
 
 /**
  * Obtém detalhes de um cliente específico
  */
-export const getClientDetails = async (clientId: string) => {
+export const getClientDetails = async (clientId: string): Promise<Profile> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -38,12 +46,19 @@ export const getClientDetails = async (clientId: string) => {
       .single();
     
     if (error) {
+      ErrorService.logError("database_error", error, { 
+        function: 'getClientDetails',
+        clientId 
+      });
       throw error;
     }
     
     return data;
   } catch (error) {
-    console.error("Erro ao buscar detalhes do cliente:", error);
+    ErrorService.logError("database_error", error, { 
+      function: 'getClientDetails',
+      clientId 
+    });
     throw error;
   }
 };
@@ -51,7 +66,7 @@ export const getClientDetails = async (clientId: string) => {
 /**
  * Remove um cliente (atualiza para não ter mentor)
  */
-export const removeClient = async (clientId: string) => {
+export const removeClient = async (clientId: string): Promise<{ success: boolean }> => {
   try {
     const { error } = await supabase
       .from('profiles')
@@ -61,12 +76,19 @@ export const removeClient = async (clientId: string) => {
       .eq('id', clientId);
     
     if (error) {
+      ErrorService.logError("database_error", error, { 
+        function: 'removeClient',
+        clientId 
+      });
       throw error;
     }
     
     return { success: true };
   } catch (error) {
-    console.error("Erro ao remover cliente:", error);
+    ErrorService.logError("database_error", error, { 
+      function: 'removeClient',
+      clientId 
+    });
     throw error;
   }
 };
@@ -74,7 +96,7 @@ export const removeClient = async (clientId: string) => {
 /**
  * Atualiza os dados de um cliente
  */
-export const updateClientProfile = async (clientId: string, data: Partial<AuthUser>) => {
+export const updateClientProfile = async (clientId: string, data: Partial<Profile>): Promise<{ success: boolean }> => {
   try {
     const { error } = await supabase
       .from('profiles')
@@ -82,12 +104,20 @@ export const updateClientProfile = async (clientId: string, data: Partial<AuthUs
       .eq('id', clientId);
     
     if (error) {
+      ErrorService.logError("database_error", error, { 
+        function: 'updateClientProfile',
+        clientId,
+        data
+      });
       throw error;
     }
     
     return { success: true };
   } catch (error) {
-    console.error("Erro ao atualizar perfil do cliente:", error);
+    ErrorService.logError("database_error", error, { 
+      function: 'updateClientProfile',
+      clientId 
+    });
     throw error;
   }
 };
@@ -95,7 +125,7 @@ export const updateClientProfile = async (clientId: string, data: Partial<AuthUs
 /**
  * Verifica se um usuário é mentor de outro
  */
-export const isMentorOfClient = async (mentorId: string, clientId: string) => {
+export const isMentorOfClient = async (mentorId: string, clientId: string): Promise<boolean> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
@@ -110,7 +140,11 @@ export const isMentorOfClient = async (mentorId: string, clientId: string) => {
     
     return !!data;
   } catch (error) {
-    console.error("Erro ao verificar relação mentor-cliente:", error);
+    ErrorService.logError("database_error", error, { 
+      function: 'isMentorOfClient',
+      mentorId,
+      clientId 
+    });
     return false;
   }
 };

@@ -28,6 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { toast } from "sonner";
 
 type Client = {
   id: string;
@@ -36,9 +37,15 @@ type Client = {
   created_at: string;
   last_login?: string;
   position?: string;
+  company?: string;
 };
 
-export function ClientsList() {
+interface ClientsListProps {
+  refreshTrigger?: number;
+  onInviteClick: () => void;
+}
+
+export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
@@ -84,15 +91,16 @@ export function ClientsList() {
     if (user?.id) {
       loadClients();
     }
-  }, [user?.id, retryCount]);
+  }, [user?.id, retryCount, refreshTrigger]);
   
   const filteredClients = clients.filter(client => 
-    client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (client.position && client.position.toLowerCase().includes(searchQuery.toLowerCase()))
+    client.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    client.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (client.position && client.position.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (client.company && client.company.toLowerCase().includes(searchQuery.toLowerCase()))
   );
   
-  const getInitials = (name: string) => {
+  const getInitials = (name: string): string => {
     if (!name) return "??";
     return name
       .split(" ")
@@ -104,6 +112,11 @@ export function ClientsList() {
 
   const handleRetry = () => {
     setRetryCount(prev => prev + 1);
+  };
+  
+  const handleEmailClient = (email: string) => {
+    window.open(`mailto:${email}`);
+    toast.success(`Abrindo email para ${email}`);
   };
   
   if (error) {
@@ -167,11 +180,9 @@ export function ClientsList() {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <Button variant="outline" className="ml-2" asChild>
-            <a href="#invite-client">
-              <UserPlus className="h-4 w-4 mr-2" />
-              Convidar
-            </a>
+          <Button variant="default" className="ml-2" onClick={onInviteClick}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Convidar
           </Button>
         </div>
         
@@ -193,6 +204,7 @@ export function ClientsList() {
                 <TableRow>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Empresa</TableHead>
                   <TableHead>Cargo</TableHead>
                   <TableHead>Data de Cadastro</TableHead>
                   <TableHead className="text-right">Ações</TableHead>
@@ -210,6 +222,7 @@ export function ClientsList() {
                       </div>
                     </TableCell>
                     <TableCell>{client.email}</TableCell>
+                    <TableCell>{client.company || "-"}</TableCell>
                     <TableCell>{client.position || "-"}</TableCell>
                     <TableCell>
                       {client.created_at ? 
@@ -218,11 +231,13 @@ export function ClientsList() {
                       }
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <a href={`mailto:${client.email}`}>
-                          <Mail className="h-4 w-4" />
-                          <span className="sr-only">Enviar email</span>
-                        </a>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleEmailClient(client.email)}
+                      >
+                        <Mail className="h-4 w-4" />
+                        <span className="sr-only">Enviar email</span>
                       </Button>
                     </TableCell>
                   </TableRow>
