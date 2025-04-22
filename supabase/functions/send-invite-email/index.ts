@@ -51,6 +51,10 @@ serve(async (req: Request) => {
       );
     }
 
+    // Add detailed logging
+    console.log(`Sending invite email to ${email} via Resend API`);
+    console.log(`Using API key: ${resendApiKey ? "configured" : "missing"}`);
+
     // Build email HTML content
     const emailHtml = buildInviteEmailHtml(
       clientName, 
@@ -66,6 +70,9 @@ serve(async (req: Request) => {
       subject: 'Convite para RH Mentor Mastery',
       html: emailHtml
     });
+
+    // Add detailed logging of response
+    console.log("Resend API response:", { data: emailData, error: resendError });
 
     // Handle Resend errors
     if (resendError) {
