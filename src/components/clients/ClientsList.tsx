@@ -55,11 +55,7 @@ export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListPr
     } catch (error: any) {
       console.error("Erro ao carregar clientes:", error);
       setError(error.message || "Não foi possível carregar a lista de clientes.");
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar a lista de clientes.",
-        variant: "destructive",
-      });
+      toast.error("Não foi possível carregar a lista de clientes.");
     } finally {
       setIsLoading(false);
     }
