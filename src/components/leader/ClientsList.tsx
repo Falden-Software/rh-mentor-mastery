@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useToast } from "sonner";
+import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { getMentorClients } from "@/services/clientService";
 import { ClientCard } from "./components/ClientCard";
@@ -17,7 +17,6 @@ export default function ClientsList({ onEdit, onDelete }: ClientListProps) {
   const [retryCount, setRetryCount] = useState(0);
   const [isSendingInvite, setIsSendingInvite] = useState(false);
   const { user } = useAuth();
-  const toast = useToast();
 
   useEffect(() => {
     if (!user?.id) return;
