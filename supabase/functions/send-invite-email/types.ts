@@ -11,12 +11,13 @@ export interface EmailResult {
   success: boolean;
   id?: string;
   service?: string;
-  error?: any;
-  errorCode?: string;
-  errorMessage?: string;
-  isSmtpError?: boolean;
-  isDomainError?: boolean;
-  isApiKeyError?: boolean;
+  error?: string;
+  errorDetails?: any;
+  isSmtpError: boolean;
+  isDomainError: boolean;
+  isApiKeyError: boolean;
+  isTestMode?: boolean;
+  actualRecipient?: string;
 }
 
 export const corsHeaders = {

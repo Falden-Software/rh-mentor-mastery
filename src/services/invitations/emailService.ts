@@ -24,25 +24,30 @@ export const sendInviteEmail = async (
       throw error;
     }
     
-    // Make sure we return a complete EmailResult object
-    return data || { 
-      success: false, 
-      error: 'Resposta inválida do servidor',
-      isSmtpError: false,
-      isDomainError: false,
-      isApiKeyError: false
+    // Make sure all required properties are present in the response
+    return {
+      success: Boolean(data?.success), 
+      error: data?.error || undefined,
+      errorDetails: data?.errorDetails,
+      isSmtpError: Boolean(data?.isSmtpError),
+      isDomainError: Boolean(data?.isDomainError),
+      isApiKeyError: Boolean(data?.isApiKeyError),
+      service: data?.service,
+      isTestMode: data?.isTestMode,
+      actualRecipient: data?.actualRecipient,
+      id: data?.id
     };
   } catch (error) {
-    ErrorService.logError('function_error', error, {
+    ErrorService.logError('email_error', error, {
       function: 'send-invite-email',
       email,
       name
     });
     
     // Extract error message for classification
-    const errorMsg = error.message || '';
+    const errorMsg = error?.message || '';
     
-    // Ensure all required properties are included in the error response
+    // Return a properly typed error response
     return {
       success: false,
       error: 'Erro interno ao enviar email',

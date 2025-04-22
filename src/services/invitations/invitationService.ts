@@ -150,7 +150,7 @@ export class InvitationService {
       
     } catch (error: any) {
       console.error("Erro ao reenviar convite:", error);
-      ErrorService.logError('resend_invitation_error', error, { inviteId, mentorId });
+      ErrorService.logError('email_error', error, { inviteId, mentorId });
       
       return {
         success: false,

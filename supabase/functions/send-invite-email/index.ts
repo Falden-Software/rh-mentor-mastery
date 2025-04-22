@@ -26,7 +26,7 @@ serve(async (req: Request) => {
           isDomainError: false,
           isSmtpError: false
         }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
       );
     }
 
@@ -49,14 +49,13 @@ serve(async (req: Request) => {
           isDomainError: false,
           isSmtpError: false
         }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
       );
     }
 
     // Add detailed logging
     console.log(`Sending invite email to ${email} via Resend API`);
-    console.log(`Using API key: ${resendApiKey ? "configured" : "missing"}`);
-
+    
     // Build email HTML content
     const emailHtml = buildInviteEmailHtml(
       clientName, 
@@ -73,7 +72,7 @@ serve(async (req: Request) => {
       html: emailHtml
     });
 
-    // Add detailed logging of response
+    // Log response
     console.log("Resend API response:", { data: emailData, error: resendError });
 
     // Handle Resend errors
@@ -81,21 +80,23 @@ serve(async (req: Request) => {
       console.error("Resend API Error:", resendError);
       
       // Check for specific error types
-      const isDomainError = resendError.message?.includes('domain');
-      const isApiKeyError = resendError.message?.includes('API key');
-      const isSmtpError = resendError.message?.includes('SMTP') || 
-                          resendError.message?.includes('email') ||
-                          resendError.message?.includes('server');
+      const errorMessage = resendError.message || 'Unknown error';
+      const isDomainError = errorMessage.includes('domain') || errorMessage.includes('sender');
+      const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('authentication');
+      const isSmtpError = errorMessage.includes('SMTP') || 
+                          errorMessage.includes('email') ||
+                          errorMessage.includes('server');
       
       return new Response(
         JSON.stringify({
           success: false,
-          error: resendError.message,
+          error: errorMessage,
+          errorDetails: resendError,
           isDomainError: Boolean(isDomainError),
           isApiKeyError: Boolean(isApiKeyError),
           isSmtpError: Boolean(isSmtpError)
         }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 400 }
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
       );
     }
 
@@ -115,16 +116,24 @@ serve(async (req: Request) => {
   } catch (error) {
     console.error("Error processing invitation email:", error);
     
+    // Determine error type
+    const errorMessage = error.message || 'Unknown error';
+    const isDomainError = errorMessage.includes('domain') || errorMessage.includes('sender');
+    const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('authentication');
+    const isSmtpError = errorMessage.includes('SMTP') || 
+                        errorMessage.includes('email') || 
+                        errorMessage.includes('server');
+    
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: errorMessage,
         errorDetails: error,
-        isApiKeyError: false,
-        isDomainError: false,
-        isSmtpError: Boolean(error.message?.includes('SMTP') || error.message?.includes('email') || error.message?.includes('server'))
+        isApiKeyError: Boolean(isApiKeyError),
+        isDomainError: Boolean(isDomainError),
+        isSmtpError: Boolean(isSmtpError)
       }),
-      { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 500 }
+      { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
     );
   }
 });

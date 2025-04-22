@@ -1,136 +1,184 @@
 
 import React, { useState } from "react";
-import { useAuth } from "@/context/AuthContext";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { InvitationService } from "@/services/invitations/invitationService";
-import InviteSuccessAlert from "../leader/invitation/InviteSuccessAlert";
-import InviteErrorAlert from "../leader/invitation/InviteErrorAlert";
-import { useToast } from "@/components/ui/use-toast";
 
-export function InviteClientForm({ onInviteSent }: { onInviteSent?: () => void }) {
-  const [clientName, setClientName] = useState("");
-  const [clientEmail, setClientEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  
-  const { user } = useAuth();
+// Import types directly from the service to ensure consistency
+import { inviteSchema } from "@/services/invitations/types";
+
+// Define the form schema using zod
+const formSchema = z.object({
+  name: inviteSchema.shape.name,
+  email: inviteSchema.shape.email,
+});
+
+// Create a type from the schema
+type InviteFormData = z.infer<typeof formSchema>;
+
+interface InviteClientFormProps {
+  onInviteSent?: () => void;
+}
+
+export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Initialize the form
+  const form = useForm<InviteFormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (data: InviteFormData) => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
-    setResult(null);
-
+    
     try {
+      console.log("Sending invite to:", data.email);
+      
       const result = await InvitationService.createInvitation(
-        clientEmail,
-        clientName,
+        data.email,
+        data.name,
         user
       );
-      
-      setResult(result);
-      
+
       if (result.success) {
         toast({
-          title: "Sucesso!",
-          description: "Convite enviado com sucesso"
+          title: "Sucesso",
+          description: "Convite enviado com sucesso!",
+          variant: "default",
         });
-        setClientName("");
-        setClientEmail("");
-        onInviteSent?.();
+        
+        form.reset();
+        
+        // Call the onInviteSent callback if provided
+        if (onInviteSent) onInviteSent();
       } else {
-        toast({
-          title: "Erro",
-          description: result.error || "Erro ao enviar convite",
-          variant: "destructive"
-        });
+        // Show specific error messages based on the error type
+        if (result.isApiKeyError) {
+          toast({
+            title: "Erro de configuração",
+            description: "API de email não configurada. Contate o administrador do sistema.",
+            variant: "destructive",
+          });
+        } else if (result.isDomainError) {
+          toast({
+            title: "Erro de domínio",
+            description: "O domínio de email não está verificado. Contate o administrador.",
+            variant: "destructive",
+          });
+        } else if (result.isSmtpError) {
+          toast({
+            title: "Erro de conexão",
+            description: "Não foi possível conectar ao servidor de email. Tente novamente mais tarde.",
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "Erro",
+            description: result.error || "Falha ao enviar convite. Tente novamente.",
+            variant: "destructive",
+          });
+        }
+        
+        console.error("Invitation error:", result);
       }
-    } catch (error: any) {
-      setResult({
-        success: false,
-        error: error.message
-      });
-      
+    } catch (error) {
+      console.error("Error sending invitation:", error);
       toast({
-        title: "Erro",
-        description: "Falha ao processar convite",
-        variant: "destructive"
+        title: "Erro inesperado",
+        description: "Ocorreu um erro ao processar seu convite.",
+        variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Safely check for properties that might not exist in the result
-  const hasError = !result?.success && result?.error;
-  const isApiKeyError = hasError && result?.isApiKeyError === true;
-  const isDomainError = hasError && result?.isDomainError === true;
-  // Explicitly check for presence of isSmtpError property before using it
-  const isSmtpError = hasError && 'isSmtpError' in result ? result.isSmtpError : false;
-
   return (
-    <div className="space-y-4 p-4">
-      <h3 className="text-lg font-medium">Convidar Novo Cliente</h3>
+    <Card>
+      <CardHeader>
+        <CardTitle>Convidar Novo Cliente</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nome completo</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Nome do cliente" 
+                      {...field}
+                      disabled={isSubmitting} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="clientName">Nome completo</Label>
-          <Input
-            id="clientName"
-            placeholder="Digite o nome do cliente"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
-        </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="clientEmail">Email</Label>
-          <Input
-            id="clientEmail"
-            type="email"
-            placeholder="cliente@empresa.com"
-            value={clientEmail}
-            onChange={(e) => setClientEmail(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
-        </div>
-        
-        {result?.success && (
-          <InviteSuccessAlert
-            message={result.message}
-            clientEmail={clientEmail}
-            serviceName={result.service}
-          />
-        )}
-        
-        {hasError && (
-          <InviteErrorAlert
-            error={result.error}
-            errorDetails={result.errorDetails}
-            isApiKeyError={isApiKeyError}
-            isDomainError={isDomainError}
-            isSmtpError={isSmtpError}
-          />
-        )}
-        
-        <div className="pt-2 flex justify-end gap-2">
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="w-full"
-          >
-            {isSubmitting ? "Enviando..." : "Enviar Convite"}
-          </Button>
-        </div>
-      </form>
-    </div>
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="email@exemplo.com" 
+                      {...field}
+                      disabled={isSubmitting} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <Button 
+              type="submit" 
+              className="w-full"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                "Enviar Convite"
+              )}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }
 
