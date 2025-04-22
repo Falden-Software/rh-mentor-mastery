@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Loader2, Search, UserPlus, Mail, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -28,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { AlertCircle } from "lucide-react";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { toast } from "sonner";
+import { Profile } from "@/types/profile";
 
 type Client = {
   id: string;
@@ -46,7 +45,6 @@ interface ClientsListProps {
 }
 
 export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListProps) {
-  const { toast } = useToast();
   const { user } = useAuth();
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +63,16 @@ export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListPr
     setError(null);
     
     try {
-      const clientsData = await getMentorClients(user.id);
+      const profileData: Profile[] = await getMentorClients(user.id);
+      
+      const clientsData: Client[] = profileData.map((profile) => ({
+        id: profile.id,
+        name: profile.name || "Sem nome",
+        email: profile.email || "Sem email",
+        created_at: profile.created_at || "",
+        position: profile.position,
+        company: profile.company,
+      }));
       
       if (!clientsData || clientsData.length === 0) {
         console.log("Nenhum cliente encontrado");
@@ -73,13 +80,11 @@ export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListPr
         console.log(`${clientsData.length} clientes encontrados`);
       }
       
-      setClients(clientsData || []);
+      setClients(clientsData);
     } catch (error: any) {
       console.error("Erro ao carregar clientes:", error);
       setError(error.message || "Não foi possível carregar a lista de clientes.");
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar clientes",
+      toast("Erro ao carregar clientes", {
         description: "Não foi possível carregar a lista de clientes.",
       });
     } finally {
@@ -116,7 +121,7 @@ export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListPr
   
   const handleEmailClient = (email: string) => {
     window.open(`mailto:${email}`);
-    toast.success(`Abrindo email para ${email}`);
+    toast("Abrindo email para " + email);
   };
   
   if (error) {

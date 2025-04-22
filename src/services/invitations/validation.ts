@@ -1,5 +1,6 @@
 
-import { inviteSchema, InviteCreateParams } from './types';
+import { AuthUser } from '@/lib/authTypes';
+import { InviteCreateParams } from './types';
 import { ErrorService } from '../errorService';
 
 export const validateInviteData = (params: InviteCreateParams) => {
@@ -7,11 +8,11 @@ export const validateInviteData = (params: InviteCreateParams) => {
     throw new Error('Mentor não autenticado');
   }
   
-  return inviteSchema.parse({
+  return {
     email: params.email,
     name: params.name,
     mentor_id: params.mentor.id
-  });
+  };
 };
 
 export const handleValidationError = (error: unknown, params: InviteCreateParams) => {

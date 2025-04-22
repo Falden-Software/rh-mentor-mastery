@@ -17,15 +17,12 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
-import { InvitationService } from "@/services/invitations/invitationService";
+import { InvitationService } from '@/services/invitations/invitationService';
 
-// Import types directly from the service to ensure consistency
-import { inviteSchema } from "@/services/invitations/types";
-
-// Define the form schema using zod
+// Define the form schema directly to avoid import issues
 const formSchema = z.object({
-  name: inviteSchema.shape.name,
-  email: inviteSchema.shape.email,
+  name: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres" }),
+  email: z.string().email({ message: "Email inválido" }),
 });
 
 // Create a type from the schema
