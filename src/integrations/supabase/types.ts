@@ -568,8 +568,24 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_user_role: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       is_client_of_mentor: {
         Args: { client_id: string; mentor_id: string }
+        Returns: boolean
+      }
+      is_master_account: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_mentor: {
+        Args: Record<PropertyKey, never>
         Returns: boolean
       }
       is_user_mentor: {

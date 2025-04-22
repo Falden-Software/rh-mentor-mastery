@@ -1,3 +1,4 @@
+
 -- Função para buscar clientes de um mentor
 CREATE OR REPLACE FUNCTION get_mentor_clients(input_mentor_id UUID)
 RETURNS SETOF profiles
