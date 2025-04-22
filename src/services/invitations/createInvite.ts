@@ -1,202 +1,82 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { AuthUser } from "@/lib/authTypes";
-import { addDays } from "date-fns";
-import { sendInviteEmail } from "./sendInviteEmail";
+import { ErrorService } from "../errorService";
+import { InvitationResult } from "./types";
 
-interface InvitationResult {
-  success: boolean;
-  error?: string;
-  errorDetails?: any;
-  message?: string;
-  isApiKeyError?: boolean;
-  isDomainError?: boolean;
-  isSmtpError?: boolean;
-  isTestMode?: boolean;
-  actualRecipient?: string;
-  intendedRecipient?: string;
-  service?: string;
-}
-
-/**
- * Creates an invitation for a new client and sends an email
- */
-import { z } from "zod";
-
-// Schema de validação
-const inviteSchema = z.object({
-  email: z.string().email("Email inválido").toLowerCase(),
-  name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
-  mentor_id: z.string().uuid("ID de mentor inválido")
-});
-
-export const createClientInvitation = async (
-  clientEmail: string,
-  clientName: string,
-  mentor: AuthUser | null
-): Promise<InvitationResult> => {
+export async function createInvite(email: string, name: string, mentor: AuthUser | null): Promise<InvitationResult> {
   try {
-    if (!mentor || !mentor.id) {
-      throw new Error("Mentor não autenticado");
+    if (!email || !name || !mentor?.id) {
+      throw new Error("Email, nome e ID do mentor são obrigatórios");
     }
-
-    // Validar dados de entrada
+    
+    console.log(`Criando convite para ${email} do mentor ${mentor.id}`);
+    
+    // Verificar convites existentes usando uma consulta direta para evitar recursão em RLS
     try {
-      inviteSchema.parse({
-        email: clientEmail,
-        name: clientName,
-        mentor_id: mentor.id
-      });
-    } catch (validationError) {
-      if (validationError instanceof z.ZodError) {
-        return {
-          success: false,
-          error: validationError.errors[0].message,
-          errorDetails: validationError
-        };
+      // Nota: Evitamos verificações de join que possam acionar recursão de RLS
+      const { data: existingInvites, error: checkError } = await supabase
+        .from('invitation_codes')
+        .select('id, code, expires_at')
+        .eq('email', email)
+        .eq('mentor_id', mentor.id)
+        .is('is_used', false);
+        
+      if (checkError) {
+        console.error("Erro ao verificar convites existentes:", checkError);
+        throw new Error(`Erro ao verificar convites existentes: ${checkError.message}`);
       }
-      throw validationError;
-    }
+      
+      let inviteId = '';
+      
+      // Se já existir um convite, apenas atualize sua data de expiração
+      if (existingInvites && existingInvites.length > 0) {
+        console.log("Convite existente encontrado, atualizando...");
+        inviteId = existingInvites[0].id;
+        
+        const { error: updateError } = await supabase
+          .from('invitation_codes')
+          .update({
+            expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 dias
+          })
+          .eq('id', inviteId);
+          
+        if (updateError) {
+          console.error("Erro ao atualizar convite existente:", updateError);
+          throw new Error(`Erro ao atualizar convite: ${updateError.message}`);
+        }
+      } else {
+        // Criar novo convite
+        const { data: newInvite, error: insertError } = await supabase.rpc('create_client_invitation', {
+          p_email: email,
+          p_mentor_id: mentor.id
+        });
 
-    // Gerar convite
-    const expirationDate = addDays(new Date(), 7).toISOString();
-    
-    // Verificar se já existe um convite para este email
-    const { data: existingInvite, error: checkError } = await supabase
-      .from('invitation_codes')
-      .select('id')
-      .eq('email', clientEmail)
-      .eq('mentor_id', mentor.id)
-      .maybeSingle();
-      
-    if (checkError) {
-      console.error("Erro ao verificar convite existente:", checkError);
-      return { success: false, error: "Erro ao verificar convite existente", errorDetails: checkError };
-    }
-    
-    let inviteId;
-    
-    // Atualizar convite existente ou criar novo
-    if (existingInvite) {
-      const { error: updateError } = await supabase
-        .from('invitation_codes')
-        .update({
-          is_used: false,
-          expires_at: expirationDate
-        })
-        .eq('id', existingInvite.id);
+        if (insertError) {
+          console.error("Erro ao criar convite:", insertError);
+          throw new Error(`Erro ao criar convite: ${insertError.message}`);
+        }
         
-      if (updateError) {
-        console.error("Erro ao atualizar convite:", updateError);
-        return { success: false, error: "Erro ao atualizar convite", errorDetails: updateError };
+        inviteId = newInvite as string;
       }
       
-      inviteId = existingInvite.id;
-    } else {
-      // Create new invitation with a generated code
-      const code = Math.random().toString(36).substring(2, 10);
-      const { data, error } = await supabase
-        .from('invitation_codes')
-        .insert({
-          code,
-          mentor_id: mentor.id,
-          email: clientEmail,
-          is_used: false,
-          expires_at: expirationDate
-        })
-        .select('id')
-        .single();
-        
-      if (error) {
-        console.error("Erro ao criar convite:", error);
-        return { success: false, error: "Erro ao criar convite", errorDetails: error };
-      }
-      
-      inviteId = data.id;
-    }
-    
-    // Enviar email de convite
-    const emailResult = await sendInviteEmail(clientEmail, clientName, mentor.name);
-    
-    if (!emailResult.success) {
-      console.error("Erro ao enviar email:", emailResult);
-      
-      // Return a more specific error message about API keys if that's the issue
-      if (emailResult.error && 
-          (emailResult.error.includes('API key') || 
-           emailResult.error.includes('Configuração de e-mail') || 
-           emailResult.error.includes('ausente'))) {
-        return { 
-          success: false, 
-          error: "Configuração de email ausente. Contate o administrador do sistema para configurar a chave de API do Resend.",
-          isApiKeyError: true,
-          errorDetails: emailResult.errorDetails
-        };
-      }
-      
-      // Check if the error is related to domain verification
-      if (emailResult.isDomainError || 
-          (emailResult.error && 
-           (emailResult.error.includes('domínio') || 
-            emailResult.error.includes('domain') ||
-            emailResult.error.includes('verify') ||
-            emailResult.error.includes('validation_error')))) {
-        return { 
-          success: false, 
-          error: "É necessário verificar um domínio no sistema de email. Entre em contato com o administrador.",
-          isDomainError: true,
-          errorDetails: emailResult.errorDetails
-        };
-      }
-      
-      // Check if the error is related to SMTP configuration
-      if (emailResult.isSmtpError || 
-          (emailResult.error && 
-           (emailResult.error.includes('SMTP') || 
-            emailResult.error.includes('email') ||
-            emailResult.error.includes('conexão') ||
-            emailResult.error.includes('connection')))) {
-        return { 
-          success: false, 
-          error: "Erro de configuração do servidor de email. Entre em contato com o administrador.",
-          isSmtpError: true,
-          errorDetails: emailResult.errorDetails,
-          service: emailResult.service
-        };
-      }
-      
-      return { 
-        success: false, 
-        error: emailResult.error || "Erro ao enviar email",
-        errorDetails: emailResult.errorDetails,
-        isSmtpError: emailResult.isSmtpError,
-        isDomainError: emailResult.isDomainError,
-        service: emailResult.service
+      return {
+        success: true,
+        message: "Convite criado com sucesso!",
+        id: inviteId
       };
+    } catch (dbError: any) {
+      console.error("Erro na operação do banco de dados:", dbError);
+      throw new Error(dbError.message || "Erro ao processar convite no banco de dados");
     }
+  } catch (error: any) {
+    console.error("Erro no serviço de convites:", error);
+    ErrorService.logError("invitation_error", error, { email, mentorId: mentor?.id });
     
-    // Check if in test mode and actual recipient is different from intended
-    if (emailResult.isTestMode && emailResult.actualRecipient !== clientEmail) {
-      return { 
-        success: true, 
-        message: "Convite criado com sucesso, mas o email foi enviado para o proprietário da conta de email (modo de teste)",
-        isTestMode: true,
-        actualRecipient: emailResult.actualRecipient,
-        intendedRecipient: clientEmail,
-        errorDetails: null,
-        service: emailResult.service
-      };
-    }
-    
-    return { 
-      success: true, 
-      message: "Convite enviado com sucesso",
-      errorDetails: null,
-      service: emailResult.service
+    return {
+      success: false,
+      error: error.message,
+      errorDetails: error
     };
-    
-  } catch (error) {
-    console.error("Erro ao criar convite:", error);
-    return { success: false, error: "Erro interno ao criar convite", errorDetails: error };
   }
-};
+}
