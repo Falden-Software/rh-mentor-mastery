@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { AuthUser } from "@/lib/authTypes";
 import { ErrorService } from "./errorService";
@@ -24,8 +25,9 @@ export class InvitationService {
       
       console.log(`Criando convite para ${email} do mentor ${mentor.id}`);
       
-      // Verificar convites existentes
+      // Verificar convites existentes usando uma consulta direta para evitar recursão em RLS
       try {
+        // Nota: Evitamos verificações de join que possam acionar recursão de RLS
         const { data: existingInvites, error: checkError } = await supabase
           .from('invitation_codes')
           .select('id, code, expires_at')
@@ -106,7 +108,7 @@ export class InvitationService {
     }
   }
 
-  // Adicionando o método resendInvitation que está faltando
+  // Método para reenvio de convites
   static async resendInvitation(inviteId: string, mentorId: string): Promise<InvitationResult> {
     try {
       if (!inviteId || !mentorId) {
@@ -115,7 +117,7 @@ export class InvitationService {
       
       console.log(`Reenviando convite ${inviteId} do mentor ${mentorId}`);
       
-      // Verificar se o convite existe e pertence ao mentor
+      // Verificar se o convite existe e pertence ao mentor - usando consulta direta para evitar recursão
       const { data: invite, error: fetchError } = await supabase
         .from('invitation_codes')
         .select('id, email, code, expires_at')

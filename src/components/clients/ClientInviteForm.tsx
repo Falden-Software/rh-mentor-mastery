@@ -60,7 +60,13 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
         onInviteSent();
       } else {
         console.error("Erro no resultado do convite:", result);
-        setErrorMessage(result.error || 'Erro ao enviar convite');
+        // Verificar se é um erro de recursão RLS para mostrar mensagem mais amigável
+        const errorMsg = result.error || 'Erro ao enviar convite';
+        setErrorMessage(
+          errorMsg.includes('recursion') 
+            ? "Erro de configuração no sistema. Por favor, contacte o administrador."
+            : errorMsg
+        );
         toast.error(result.error || 'Erro ao enviar convite');
       }
     } catch (error: any) {
