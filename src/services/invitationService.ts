@@ -172,30 +172,7 @@ export class InvitationService {
       
       console.log(`Criando convite direto para ${email} com o mentor ${mentorId}`);
       
-      // Usar RPC para evitar recursão RLS se disponível
-      try {
-        const rpcResult = await supabase.rpc('create_invitation', {
-          p_email: email,
-          p_mentor_id: mentorId,
-          p_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-        });
-        
-        if (rpcResult.error) {
-          console.warn("RPC não disponível ou falhou:", rpcResult.error);
-          // Continuar com o método alternativo
-        } else if (rpcResult.data) {
-          console.log("Convite criado com sucesso via RPC:", rpcResult.data);
-          return {
-            success: true,
-            message: "Convite criado com sucesso!",
-            id: rpcResult.data
-          };
-        }
-      } catch (rpcError) {
-        console.warn("Erro ao tentar usar RPC:", rpcError);
-        // Continue com método alternativo
-      }
-      
+      // Remover tentativa de usar RPC que não existe
       // Método alternativo usando consulta direta
       // Verificar convites existentes primeiro
       const { data: existingInvites, error: checkError } = await supabase
