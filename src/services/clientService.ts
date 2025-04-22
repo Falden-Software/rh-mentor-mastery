@@ -17,6 +17,7 @@ export const getMentorClients = async (mentorId: string): Promise<Profile[]> => 
       });
 
     if (error) {
+      console.error("Erro ao buscar clientes via RPC:", error);
       ErrorService.logError("database_error", error, { 
         function: 'getMentorClients',
         mentorId 
@@ -24,8 +25,10 @@ export const getMentorClients = async (mentorId: string): Promise<Profile[]> => 
       throw error;
     }
     
+    console.log(`Clientes encontrados: ${clientsData?.length || 0}`);
     return clientsData || [];
   } catch (error) {
+    console.error("Erro ao obter clientes:", error);
     ErrorService.logError("database_error", error, { 
       function: 'getMentorClients',
       mentorId 

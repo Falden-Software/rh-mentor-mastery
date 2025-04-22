@@ -4,6 +4,7 @@ CREATE OR REPLACE FUNCTION get_mentor_clients(input_mentor_id UUID)
 RETURNS SETOF profiles
 LANGUAGE sql
 SECURITY DEFINER
+STABLE
 AS $$
   SELECT p.*
   FROM profiles p

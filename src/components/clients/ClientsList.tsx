@@ -32,7 +32,9 @@ export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListPr
     setError(null);
     
     try {
+      console.log("Iniciando busca de clientes para o mentor:", user.id);
       const profileData: Profile[] = await getMentorClients(user.id);
+      console.log("Dados recebidos:", profileData);
       
       const clientsData: Client[] = profileData.map((profile) => ({
         id: profile.id,
@@ -53,8 +55,10 @@ export function ClientsList({ refreshTrigger = 0, onInviteClick }: ClientsListPr
     } catch (error: any) {
       console.error("Erro ao carregar clientes:", error);
       setError(error.message || "Não foi possível carregar a lista de clientes.");
-      toast("Erro ao carregar clientes", {
+      toast({
+        title: "Erro",
         description: "Não foi possível carregar a lista de clientes.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
