@@ -5,30 +5,42 @@ import { ErrorService } from "./errorService";
 import { Profile } from "@/types/profile";
 
 /**
- * Obtém a lista de clientes de um mentor usando SELECT direto
- * Isso evita problemas com a função RPC se houver alguma questão
+ * Obtém a lista de clientes de um mentor usando RPC
+ * Esta função usa uma função RPC definida no Supabase para evitar problemas de recursão com RLS
  */
 export const getMentorClients = async (mentorId: string): Promise<Profile[]> => {
   try {
     console.log(`Buscando clientes para o mentor: ${mentorId}`);
     
-    // Usar método direto em vez da função RPC para evitar problemas
+    // Usar a função RPC get_mentor_clients que é SECURITY DEFINER e evita recursão
     const { data: clientsData, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('mentor_id', mentorId)
-      .eq('role', 'client');
+      .rpc('get_mentor_clients', { input_mentor_id: mentorId });
 
     if (error) {
-      console.error("Erro ao buscar clientes:", error);
+      console.error("Erro ao buscar clientes via RPC:", error);
       ErrorService.logError("database_error", error, { 
         function: 'getMentorClients',
         mentorId 
       });
-      throw error;
+      
+      // Tentar método alternativo com SELECT direto como fallback
+      console.log("Tentando método alternativo para buscar clientes...");
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('mentor_id', mentorId)
+        .eq('role', 'client');
+        
+      if (fallbackError) {
+        console.error("Erro no método alternativo:", fallbackError);
+        throw fallbackError;
+      }
+      
+      console.log(`Clientes encontrados (método alternativo): ${fallbackData?.length || 0}`);
+      return fallbackData || [];
     }
     
-    console.log(`Clientes encontrados: ${clientsData?.length || 0}`);
+    console.log(`Clientes encontrados via RPC: ${clientsData?.length || 0}`);
     return clientsData || [];
   } catch (error) {
     console.error("Erro ao obter clientes:", error);
