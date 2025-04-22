@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { 
   Table, 
   TableBody, 
@@ -15,13 +15,13 @@ import { ptBR } from 'date-fns/locale';
 import { Mail, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { useAuth } from '@/context/AuthContext';
-import { InvitationService } from '@/services/invitations/invitationService';
-import { useToast } from '@/components/ui/use-toast';
+import useNotifications from '@/hooks/useNotifications';
 import { InvitationCode } from '@/types/models';
+import { InvitationService } from '@/services/invitations/index';
 
-export function InvitationHistory() {
+const InvitationHistory = () => {
   const { user } = useAuth();
-  const { toast } = useToast();
+  const notify = useNotifications();
   const [sendingEmails, setSendingEmails] = useState<Record<string, boolean>>({});
   
   const { data: invitations, isLoading, error, refetch } = useQuery({
@@ -29,64 +29,55 @@ export function InvitationHistory() {
     queryFn: async () => {
       if (!user?.id) return [];
       
-      const { data, error } = await supabase
-        .from('invitation_codes')
-        .select('*')
-        .eq('mentor_id', user.id)
-        .order('created_at', { ascending: false });
-        
-      if (error) {
-        console.error("Erro ao buscar histórico de convites:", error);
-        toast({
-          title: "Erro",
-          description: "Erro ao carregar histórico de convites",
-          variant: "destructive"
-        });
+      try {
+        const data = await InvitationService.getMentorInvitations(user.id);
+        return data || [];
+      } catch (error) {
+        console.error("Error fetching invitation history:", error);
+        notify.error("Error loading invitation history");
         throw error;
       }
-      
-      return data || [];
     },
     enabled: !!user?.id,
   });
+  
+  if (error) {
+    console.error("Error in invitation query:", error);
+  }
 
-  const handleResend = async (inviteId: string) => {
-    if (!user?.id || sendingEmails[inviteId]) return;
-    
-    try {
+  const resendMutation = useMutation({
+    mutationFn: async (inviteId: string) => {
       setSendingEmails(prev => ({ ...prev, [inviteId]: true }));
       
-      const result = await InvitationService.resendInvitation(inviteId, user.id);
-      
-      if (result.success) {
-        toast({
-          title: "Sucesso",
-          description: "Convite reenviado com sucesso"
-        });
-        refetch();
-      } else {
-        toast({
-          title: "Erro",
-          description: result.error || "Falha ao reenviar convite",
-          variant: "destructive"
-        });
+      try {
+        const result = await InvitationService.resendInvitation(inviteId, user?.id || '');
+        
+        if (!result.success) {
+          throw new Error(result.error || "Unknown error");
+        }
+        
+        return result;
+      } catch (error: any) {
+        throw error;
       }
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Falha ao processar solicitação",
-        variant: "destructive"
-      });
-    } finally {
+    },
+    onSuccess: (data, inviteId) => {
+      notify.success(data.message || "Invitation resent successfully!");
+      setSendingEmails(prev => ({ ...prev, [inviteId]: false }));
+      refetch();
+    },
+    onError: (error: any, inviteId) => {
+      console.error("Error resending invitation:", error);
+      notify.error("Failed to resend invitation. Please try again later.");
       setSendingEmails(prev => ({ ...prev, [inviteId]: false }));
     }
-  };
+  });
   
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
     } catch (e) {
-      return "Data inválida";
+      return "Invalid date";
     }
   };
 
@@ -115,6 +106,11 @@ export function InvitationHistory() {
     );
   };
 
+  const isInviteExpired = (invite: InvitationCode): boolean => {
+    const expiresAt = new Date(invite.expires_at);
+    return expiresAt < new Date();
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -129,10 +125,10 @@ export function InvitationHistory() {
         <TableHeader>
           <TableRow>
             <TableHead>Email</TableHead>
-            <TableHead className="hidden md:table-cell">Data de envio</TableHead>
-            <TableHead className="hidden md:table-cell">Expira em</TableHead>
+            <TableHead className="hidden md:table-cell">Sent date</TableHead>
+            <TableHead className="hidden md:table-cell">Expires on</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[100px]">Ações</TableHead>
+            <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -142,7 +138,7 @@ export function InvitationHistory() {
                 <TableCell>
                   {invitation.email}
                   <div className="md:hidden text-xs text-gray-500 mt-1">
-                    Enviado: {formatDate(invitation.created_at)}
+                    Sent: {formatDate(invitation.created_at)}
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">{formatDate(invitation.created_at)}</TableCell>
@@ -154,7 +150,7 @@ export function InvitationHistory() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleResend(invitation.id)}
+                    onClick={() => resendMutation.mutate(invitation.id)}
                     disabled={sendingEmails[invitation.id] || invitation.is_used}
                     className={invitation.is_used ? "opacity-50 cursor-not-allowed" : ""}
                   >
@@ -163,7 +159,7 @@ export function InvitationHistory() {
                     ) : (
                       <>
                         <Mail className="h-4 w-4 mr-1" />
-                        Reenviar
+                        Resend
                       </>
                     )}
                   </Button>
@@ -173,7 +169,7 @@ export function InvitationHistory() {
           ) : (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                Nenhum convite enviado ainda.
+                No invitations sent yet.
               </TableCell>
             </TableRow>
           )}
@@ -181,6 +177,6 @@ export function InvitationHistory() {
       </Table>
     </div>
   );
-}
+};
 
 export default InvitationHistory;
