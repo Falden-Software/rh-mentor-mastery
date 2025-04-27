@@ -28,7 +28,7 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
     return data || [];
   } catch (error) {
     console.error("Failed to get mentor invitations:", error);
-    ErrorService.logError('invitation_service_error', error, { mentorId });
+    ErrorService.logError('database_error', error, { mentorId });
     throw error;
   }
 };

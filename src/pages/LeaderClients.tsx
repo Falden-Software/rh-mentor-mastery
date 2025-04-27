@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientInviteForm } from "@/components/clients/ClientInviteForm";
-import { InvitationHistory } from "@/components/invitations/InvitationHistory";
+import InvitationHistory from "@/components/invitations/InvitationHistory";
 import {
   Dialog,
   DialogContent,
