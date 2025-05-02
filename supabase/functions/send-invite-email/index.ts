@@ -81,36 +81,58 @@ serve(async (req: Request) => {
           );
         } else {
           console.error("Resend failed:", result);
-          // If Resend failed due to domain verification issues, we'll attempt fallback method
-          if (result.errorMessage?.includes('domain')) {
-            console.log("Domain verification issue detected with Resend, trying fallback");
-            // Continue to fallback method
-          } else {
-            // For other errors, return the error
+          
+          // Check for domain verification error and provide clear message
+          if (result.errorMessage?.includes('verify a domain') || result.errorMessage?.includes('own email address')) {
             return new Response(
               JSON.stringify({
                 success: false,
+                error: 'Você precisa verificar um domínio no Resend antes de enviar emails para outros destinatários.',
+                details: 'Acesse resend.com/domains para verificar seu domínio.',
                 service: 'Resend',
-                error: result.errorMessage,
-                errorCode: result.errorCode,
-                isApiKeyError: result.errorMessage?.includes('API key'),
-                isDomainError: result.errorMessage?.includes('domain'),
-                isSmtpError: result.errorMessage?.includes('delivery')
+                isDomainError: true,
+                isApiKeyError: false,
+                isSmtpError: false
               }),
               { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
             );
           }
+          
+          // For other errors, return the error
+          return new Response(
+            JSON.stringify({
+              success: false,
+              service: 'Resend',
+              error: result.errorMessage || 'Erro desconhecido ao enviar email',
+              errorCode: result.errorCode,
+              isApiKeyError: result.errorMessage?.includes('API key'),
+              isDomainError: result.errorMessage?.includes('domain'),
+              isSmtpError: result.errorMessage?.includes('delivery')
+            }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+          );
         }
       } catch (error) {
         console.error("Error with Resend:", error);
       }
+    } else {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Chave API do Resend não configurada',
+          isApiKeyError: true,
+          isDomainError: false,
+          isSmtpError: false
+        }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+      );
     }
     
     // If Resend is not available or failed, respond with no service available
     return new Response(
       JSON.stringify({
         success: false,
-        error: 'No email service is properly configured',
+        error: 'Nenhum serviço de email está configurado corretamente',
         isApiKeyError: true,
         isDomainError: false,
         isSmtpError: false
@@ -124,7 +146,7 @@ serve(async (req: Request) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message || 'Unknown error in email sending function',
+        error: error.message || 'Erro desconhecido na função de envio de email',
         isApiKeyError: error.message?.includes('API key'),
         isDomainError: error.message?.includes('domain'),
         isSmtpError: error.message?.includes('SMTP')

@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { InvitationService } from '@/services/invitations';
+import { AlertCircle, Wifi } from "lucide-react";
 import { StatusAlert } from '@/components/ui/status-alert';
 import { sendInviteEmail } from '@/services/invitations/emailService';
+import InviteErrorAlert from '@/components/leader/invitation/InviteErrorAlert';
 
 interface ClientInviteFormProps {
   onInviteSent: () => void;
@@ -26,6 +26,12 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     service?: string;
     message?: string;
   } | null>(null);
+  
+  // State for domain verification error
+  const [isDomainError, setIsDomainError] = useState(false);
+  const [isApiKeyError, setIsApiKeyError] = useState(false);
+  const [isSmtpError, setIsSmtpError] = useState(false);
+  const [errorDetails, setErrorDetails] = useState<any>(null);
   
   const { user } = useAuth();
 
@@ -52,6 +58,10 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     setIsSubmitting(true);
     setErrorMessage(null);
     setSuccessInfo(null);
+    setIsDomainError(false);
+    setIsApiKeyError(false);
+    setIsSmtpError(false);
+    setErrorDetails(null);
 
     try {
       console.log(`Tentando enviar convite para cliente ${clientEmail} com nome ${clientName}`);
@@ -76,12 +86,21 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
       } else {
         console.error("Erro no envio de convite:", emailResult);
         
-        if (emailResult.isApiKeyError) {
+        // Handle specific error types
+        setIsDomainError(Boolean(emailResult.isDomainError));
+        setIsApiKeyError(Boolean(emailResult.isApiKeyError));
+        setIsSmtpError(Boolean(emailResult.isSmtpError));
+        setErrorDetails(emailResult.errorDetails);
+        
+        if (emailResult.isDomainError) {
+          setErrorType("warning");
+          setErrorMessage("Domínio não verificado no Resend. Verifique um domínio em resend.com/domains.");
+        } else if (emailResult.isApiKeyError) {
           setErrorType("warning");
           setErrorMessage("Chave de API não configurada. Por favor, contate o suporte.");
-        } else if (emailResult.isDomainError) {
+        } else if (emailResult.isSmtpError) {
           setErrorType("warning");
-          setErrorMessage("Domínio de email não verificado. Por favor, contate o suporte.");
+          setErrorMessage("Erro de conexão com o servidor de email. Por favor, tente novamente mais tarde.");
         } else {
           setErrorType("error");
           setErrorMessage(emailResult.error || 'Erro ao enviar convite');
@@ -98,13 +117,30 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     }
   };
 
+  const handleRetry = () => {
+    handleSubmit(new Event('submit') as any);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Convidar Novo Cliente</h3>
       </div>
 
-      {errorMessage && (
+      {/* Error display with custom component for domain verification issues */}
+      {(isDomainError || isApiKeyError || isSmtpError) && (
+        <InviteErrorAlert
+          error={errorMessage || ""}
+          errorDetails={errorDetails}
+          isApiKeyError={isApiKeyError}
+          isDomainError={isDomainError}
+          isSmtpError={isSmtpError}
+          onRetry={handleRetry}
+        />
+      )}
+
+      {/* Regular error display */}
+      {errorMessage && !isDomainError && !isApiKeyError && !isSmtpError && (
         errorType === "error" ? (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />

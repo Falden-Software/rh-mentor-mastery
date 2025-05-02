@@ -28,10 +28,26 @@ export const sendInviteEmail = async (
     
     if (error) {
       console.error("Function invocation error:", error);
-      throw error;
+      return {
+        success: false, 
+        error: `Erro na função de envio: ${error.message}`,
+        errorDetails: error,
+        isSmtpError: true,
+        isDomainError: false
+      };
     }
     
     console.log("Edge function response:", data);
+    
+    // If no data returned from function, handle as an error
+    if (!data) {
+      return {
+        success: false,
+        error: 'Resposta vazia da função de envio de email',
+        isSmtpError: true,
+        isDomainError: false
+      };
+    }
     
     // Make sure all required properties are present in the response
     return {
