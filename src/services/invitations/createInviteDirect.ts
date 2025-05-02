@@ -1,7 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
 import { InvitationResult } from "./types";
-import { validate } from "./validation";
+import { validateInviteData } from "./validation";
 
 /**
  * Creates an invitation directly via the Supabase Auth API
@@ -14,11 +14,11 @@ export async function createInviteDirect(
 ): Promise<InvitationResult> {
   try {
     // Validate input
-    const validateResult = validate(email, name);
-    if (!validateResult.valid) {
+    const validateResult = validateInviteData({ email, name, mentor: { id: mentorId } });
+    if (!validateResult) {
       return {
         success: false,
-        error: validateResult.error || "Erro na validação dos dados"
+        error: "Erro na validação dos dados"
       };
     }
 
