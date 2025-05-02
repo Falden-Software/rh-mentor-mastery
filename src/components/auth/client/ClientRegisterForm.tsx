@@ -47,6 +47,7 @@ export const ClientRegisterForm: React.FC<ClientRegisterFormProps> = ({
       position: "",
       bio: ""
     },
+    mode: "onChange" // Validar ao alterar campos
   });
 
   React.useEffect(() => {
@@ -55,9 +56,18 @@ export const ClientRegisterForm: React.FC<ClientRegisterFormProps> = ({
     }
   }, [initialEmail, form]);
 
+  const handleFormSubmit = async (values: ClientRegistrationFormData) => {
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      console.error("Erro no envio do formulário:", error);
+      // O erro será tratado pelo componente pai
+    }
+  };
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -143,7 +153,7 @@ export const ClientRegisterForm: React.FC<ClientRegisterFormProps> = ({
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isLoading}>
+        <Button type="submit" className="w-full" disabled={isLoading || !form.formState.isValid}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

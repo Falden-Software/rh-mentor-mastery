@@ -18,6 +18,7 @@ export const useClientRegistration = (effectiveMentorId: string | null | undefin
     setFormError(null);
     
     try {
+      // Validações adicionais no lado do cliente
       if (!values.name?.trim()) {
         setFormError("O nome é obrigatório");
         setIsLoading(false);
@@ -35,6 +36,13 @@ export const useClientRegistration = (effectiveMentorId: string | null | undefin
         setIsLoading(false);
         return;
       }
+      
+      console.log("Iniciando registro com dados validados:", { 
+        email: values.email, 
+        name: values.name,
+        hasPassword: !!values.password,
+        passwordLength: values.password.length
+      });
       
       // Verificar primeiro se temos um mentorId para usar
       let mentorIdToUse = effectiveMentorId;
@@ -127,25 +135,42 @@ export const useClientRegistration = (effectiveMentorId: string | null | undefin
           
         if (profileError) {
           console.error("Erro ao vincular cliente ao mentor:", profileError);
+          toast({
+            variant: "destructive",
+            title: "Aviso",
+            description: "Conta criada, mas houve um problema ao vincular ao mentor. Entre em contato com suporte.",
+          });
         } else {
           console.log("Cliente vinculado com sucesso ao mentor:", mentorIdToUse);
+          toast({
+            title: "Conta criada com sucesso",
+            description: "Bem-vindo! Sua conta foi criada com sucesso.",
+          });
         }
-        
-        toast({
-          title: "Conta criada com sucesso",
-          description: "Bem-vindo! Sua conta foi criada com sucesso.",
-        });
         
         navigate("/client/login");
       }
     } catch (error) {
       console.error("Erro no registro:", error);
-      setFormError(error instanceof Error ? error.message : "Ocorreu um erro durante o registro.");
+      
+      // Melhor tratamento de erros específicos do Supabase
+      if (error instanceof Error) {
+        // Tratamento de erros específicos
+        if (error.message.includes("User already registered")) {
+          setFormError("Este email já está registrado. Por favor, tente fazer login.");
+        } else if (error.message.includes("Password")) {
+          setFormError("Problema com a senha: " + error.message);
+        } else {
+          setFormError(error.message);
+        }
+      } else {
+        setFormError("Ocorreu um erro durante o registro.");
+      }
       
       toast({
         variant: "destructive",
         title: "Erro no registro",
-        description: error instanceof Error ? error.message : "Ocorreu um erro durante o registro.",
+        description: formError || "Ocorreu um erro durante o registro.",
       });
     } finally {
       setIsLoading(false);

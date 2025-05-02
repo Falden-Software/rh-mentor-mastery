@@ -10,14 +10,18 @@ interface UseInviteVerificationProps {
 
 export function useInviteVerification({ token, email }: UseInviteVerificationProps) {
   const { toast } = useToast();
-  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(true); // Começa como verdadeiro para mostrar estado de carregamento
   const [isVerified, setIsVerified] = useState(false);
   const [mentorId, setMentorId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const verifyInvite = async () => {
-      if (!token && !email) return;
+      if (!token && !email) {
+        setIsVerifying(false);
+        setError("Nenhum token ou email fornecido para verificação");
+        return;
+      }
       
       setIsVerifying(true);
       setError(null);
@@ -44,14 +48,17 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
             console.log("Convite válido encontrado pelo token:", inviteData[0]);
             setIsVerified(true);
             setMentorId(inviteData[0].mentor_id);
+            setIsVerifying(false);
             return;
           } else {
             console.log("Nenhum convite válido encontrado para o token:", token);
+            setError("Convite expirado ou já utilizado");
           }
         }
         
         // Se temos um email ou se a verificação por token falhou, tentamos pelo email
         if (email) {
+          console.log("Verificando convite por email:", email);
           const { data: inviteData, error: inviteError } = await supabase
             .from('invitation_codes')
             .select('*')
@@ -68,13 +75,16 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
             console.log("Encontrado convite válido pelo email:", inviteData[0]);
             setIsVerified(true);
             setMentorId(inviteData[0].mentor_id);
+            setIsVerifying(false);
             return;
           } else {
             console.log("Nenhum convite válido encontrado para o email:", email);
+            setError("Não existe um convite válido para este email");
           }
         }
         
         if (!isVerified) {
+          console.log("Nenhum convite válido encontrado por token ou email");
           setError("Não foi possível encontrar um convite válido");
         }
       } catch (error: any) {

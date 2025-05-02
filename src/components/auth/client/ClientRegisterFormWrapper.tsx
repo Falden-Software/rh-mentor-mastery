@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,7 +22,7 @@ export const ClientRegisterFormWrapper: React.FC<ClientRegisterFormWrapperProps>
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
-        <Card>
+        <Card className="shadow-lg border-muted">
           <CardHeader>
             <CardTitle className="text-2xl text-center">Criar conta</CardTitle>
             <CardDescription className="text-center">
