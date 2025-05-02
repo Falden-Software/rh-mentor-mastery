@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 
 interface UseInviteVerificationProps {
   token?: string | null;
@@ -9,7 +8,6 @@ interface UseInviteVerificationProps {
 }
 
 export function useInviteVerification({ token, email }: UseInviteVerificationProps) {
-  const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(true); // Começa como verdadeiro para mostrar estado de carregamento
   const [isVerified, setIsVerified] = useState(false);
   const [mentorId, setMentorId] = useState<string | null>(null);
@@ -29,7 +27,7 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
       try {
         console.log("Verificando convite com:", { token, email });
         
-        // Se temos um token/código, verificamos ele primeiro
+        // Verificar por token usando a função RPC para evitar recursão
         if (token) {
           console.log("Verificando token de convite:", token);
           
@@ -40,32 +38,11 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
             
           if (inviteError) {
             console.error("Erro ao verificar token de convite via RPC:", inviteError);
-            // Fallback para query direta se a RPC falhar
-            const { data: directData, error: directError } = await supabase
-              .from('invitation_codes')
-              .select('*')
-              .eq('code', token)
-              .eq('is_used', false)
-              .gt('expires_at', new Date().toISOString())
-              .maybeSingle();
-              
-            if (directError) {
-              console.error("Erro ao verificar token diretamente:", directError);
-              setError("Não foi possível verificar o token de convite");
-            } else if (directData) {
-              console.log("Convite válido encontrado pelo token:", directData);
-              setIsVerified(true);
-              setMentorId(directData.mentor_id);
-              setIsVerifying(false);
-              return;
-            } else {
-              console.log("Nenhum convite válido encontrado para o token:", token);
-              setError("Convite expirado ou já utilizado");
-            }
-          } else if (inviteData) {
-            console.log("Convite válido encontrado via RPC:", inviteData);
+            setError("Não foi possível verificar o token de convite");
+          } else if (inviteData && inviteData.length > 0) {
+            console.log("Convite válido encontrado via RPC:", inviteData[0]);
             setIsVerified(true);
-            setMentorId(inviteData.mentor_id);
+            setMentorId(inviteData[0].mentor_id);
             setIsVerifying(false);
             return;
           } else {
@@ -74,25 +51,27 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
           }
         }
         
-        // Se temos um email ou se a verificação por token falhou, tentamos pelo email
-        if (email) {
+        // Verificar por email se não encontrou por token
+        if (email && !isVerified) {
           console.log("Verificando convite por email:", email);
-          const { data: inviteData, error: inviteError } = await supabase
+          
+          // Usando query direta com RLS (menos problemas de recursão em queries simples)
+          const { data: inviteDataByEmail, error: emailError } = await supabase
             .from('invitation_codes')
             .select('*')
             .eq('email', email)
             .eq('is_used', false)
             .gt('expires_at', new Date().toISOString())
             .order('created_at', { ascending: false })
-            .maybeSingle();
+            .limit(1);
           
-          if (inviteError) {
-            console.error("Erro ao verificar convite por email:", inviteError);
+          if (emailError) {
+            console.error("Erro ao verificar convite por email:", emailError);
             setError("Não foi possível verificar o convite por email");
-          } else if (inviteData) {
-            console.log("Encontrado convite válido pelo email:", inviteData);
+          } else if (inviteDataByEmail && inviteDataByEmail.length > 0) {
+            console.log("Encontrado convite válido pelo email:", inviteDataByEmail[0]);
             setIsVerified(true);
-            setMentorId(inviteData.mentor_id);
+            setMentorId(inviteDataByEmail[0].mentor_id);
             setIsVerifying(false);
             return;
           } else {
@@ -115,7 +94,7 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
     };
 
     verifyInvite();
-  }, [token, email]);
+  }, [token, email, isVerified]);
 
   return {
     isVerifying,

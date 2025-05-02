@@ -509,6 +509,20 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_mentor_invitations: {
+        Args: { p_mentor_id: string }
+        Returns: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          is_used: boolean
+          mentor_id: string
+          role: string
+          used_by: string | null
+        }[]
+      }
       get_policies: {
         Args: { table_name: string }
         Returns: Json
@@ -602,6 +616,24 @@ export type Database = {
       mentor_owns_test: {
         Args: { mentor_id: string; test_id: string }
         Returns: boolean
+      }
+      resend_invitation: {
+        Args: { p_invite_id: string; p_mentor_id: string }
+        Returns: string
+      }
+      verify_invitation_code: {
+        Args: { p_code: string }
+        Returns: {
+          code: string
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          is_used: boolean
+          mentor_id: string
+          role: string
+          used_by: string | null
+        }[]
       }
     }
     Enums: {
