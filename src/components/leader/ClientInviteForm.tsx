@@ -60,7 +60,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
     setSendTimeout(timeout);
     
     try {
-      console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName} por ${user?.name || 'conta mestre'}`);
+      console.log(`Tentando criar convite para cliente ${clientEmail} com nome ${clientName} por ${user?.name || 'conta mestre'}`);
       
       // Se for conta mestre, envie diretamente sem usar a API pública
       if (user?.is_master_account) {
@@ -72,7 +72,8 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
           .insert({
             code: Math.random().toString(36).substring(2, 10).toUpperCase(),
             email: clientEmail,
-            mentor_id: user.id
+            mentor_id: user.id,
+            role: 'client' // Explicitamente definindo como cliente
           })
           .select('*')
           .single();
@@ -92,7 +93,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
           throw new Error(emailResult.error || 'Erro ao enviar email');
         }
         
-        setSuccessMessage(`Convite enviado com sucesso para ${clientEmail} via ${emailResult.service || 'email'}`);
+        setSuccessMessage(`Convite de cliente enviado com sucesso para ${clientEmail} via ${emailResult.service || 'email'}`);
         notify.success('Convite enviado com sucesso!');
         setClientEmail('');
         setClientName('');
@@ -105,18 +106,18 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
         );
         
         if (result.success) {
-          setSuccessMessage(result.message || 'Convite enviado com sucesso!');
+          setSuccessMessage(result.message || 'Convite de cliente enviado com sucesso!');
           notify.success('Convite enviado com sucesso!');
           setClientEmail('');
           setClientName('');
         } else {
-          setErrorMessage(result.error || 'Erro ao enviar convite');
-          notify.error(result.error || 'Falha ao enviar convite');
+          setErrorMessage(result.error || 'Erro ao enviar convite de cliente');
+          notify.error(result.error || 'Falha ao enviar convite de cliente');
         }
       }
     } catch (error: any) {
-      console.error('Erro ao criar convite:', error);
-      setErrorMessage('Erro interno ao processar convite: ' + error.message);
+      console.error('Erro ao criar convite de cliente:', error);
+      setErrorMessage('Erro interno ao processar convite de cliente: ' + error.message);
       notify.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       if (sendTimeout) {

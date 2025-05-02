@@ -15,15 +15,15 @@ export const sendInvitationEmail = async (
   mentorName?: string
 ): Promise<EmailResult> => {
   try {
-    console.log(`Enviando email de convite para ${to} via SendGrid...`);
+    console.log(`Enviando email de convite para cliente ${to} via SendGrid...`);
 
     const { data, error } = await supabase.functions.invoke('send-email-sendgrid', {
       body: {
         to,
         name: name || to.split('@')[0],
         mentorName: mentorName || 'RH Mentor Mastery',
-        subject: 'Convite para RH Mentor Mastery',
-        type: 'invitation'
+        subject: 'Convite para RH Mentor Mastery como Cliente',
+        type: 'client_invitation'
       }
     });
     
@@ -40,7 +40,7 @@ export const sendInvitationEmail = async (
     
     return {
       success: true,
-      message: 'Convite enviado com sucesso',
+      message: 'Convite para cliente enviado com sucesso',
       id: data?.id,
       service: 'SendGrid'
     };

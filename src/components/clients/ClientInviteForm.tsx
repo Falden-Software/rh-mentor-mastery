@@ -53,7 +53,7 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     setSuccessInfo(null);
 
     try {
-      console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName}`);
+      console.log(`Tentando criar convite para cliente ${clientEmail} com nome ${clientName}`);
       
       // Use the direct method that avoids RLS recursion
       const result = await InvitationService.createInvitationDirect(
@@ -63,7 +63,7 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
       );
       
       if (result.success) {
-        console.log("Convite enviado com sucesso:", result);
+        console.log("Convite de cliente enviado com sucesso:", result);
         toast.success("Convite enviado com sucesso!");
         setClientEmail('');
         setClientName('');
@@ -73,7 +73,7 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
         });
         onInviteSent();
       } else {
-        console.error("Erro no resultado do convite:", result);
+        console.error("Erro no resultado do convite de cliente:", result);
         
         if (result.error?.includes('recursion')) {
           setErrorType("warning");
@@ -81,14 +81,14 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
           toast.error("Erro de configuração. Por favor, tente novamente mais tarde.");
         } else {
           setErrorType("error");
-          setErrorMessage(result.error || 'Erro ao enviar convite');
-          toast.error(result.error || 'Erro ao enviar convite');
+          setErrorMessage(result.error || 'Erro ao enviar convite de cliente');
+          toast.error(result.error || 'Erro ao enviar convite de cliente');
         }
       }
     } catch (error: any) {
-      console.error('Erro durante a submissão do convite:', error);
+      console.error('Erro durante a submissão do convite de cliente:', error);
       setErrorType("error");
-      setErrorMessage('Erro interno ao processar convite');
+      setErrorMessage('Erro interno ao processar convite de cliente');
       toast.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsSubmitting(false);

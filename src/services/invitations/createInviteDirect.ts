@@ -2,7 +2,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { sendInvitationEmail } from '@/services/sendgridService';
-import { InvitationResult, CreateInviteParams } from './types';
+import { InvitationResult } from './types';
 
 /**
  * Creates a client invitation directly and sends an email
@@ -22,7 +22,7 @@ export const createInviteDirect = async (
       };
     }
 
-    console.log(`Creating invitation for ${email} with mentor ID ${mentorId}`);
+    console.log(`Creating client invitation for ${email} with mentor ID ${mentorId}`);
     
     // Generate a new invitation code
     const inviteId = uuidv4();
@@ -30,7 +30,7 @@ export const createInviteDirect = async (
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
     
-    // Insert the invitation code to the database
+    // Insert the invitation code to the database - especificar role como 'client'
     const { data: invitationData, error: insertError } = await supabase
       .from('invitation_codes')
       .insert({
@@ -39,13 +39,14 @@ export const createInviteDirect = async (
         email: email,
         mentor_id: mentorId,
         is_used: false,
-        expires_at: expiresAt.toISOString()
+        expires_at: expiresAt.toISOString(),
+        role: 'client' // Explicitamente definindo como cliente
       })
       .select('*')
       .single();
       
     if (insertError) {
-      console.error("Error creating invitation:", insertError);
+      console.error("Error creating client invitation:", insertError);
       return { 
         success: false, 
         error: insertError.message || 'Erro ao criar convite' 
@@ -65,10 +66,10 @@ export const createInviteDirect = async (
     const emailResult = await sendInvitationEmail(email, name, mentorName);
     
     if (!emailResult.success) {
-      console.error("Failed to send invitation email:", emailResult);
+      console.error("Failed to send client invitation email:", emailResult);
       return {
         success: true, // Still successful since we created the invite
-        message: 'Convite criado, mas houve um problema ao enviar o email',
+        message: 'Convite de cliente criado, mas houve um problema ao enviar o email',
         error: emailResult.error,
         id: inviteId
       };
@@ -76,7 +77,7 @@ export const createInviteDirect = async (
     
     return {
       success: true,
-      message: 'Convite criado e email enviado com sucesso',
+      message: 'Convite de cliente criado e email enviado com sucesso',
       service: emailResult.service,
       id: inviteId
     };
@@ -84,7 +85,7 @@ export const createInviteDirect = async (
     console.error("Error in createInviteDirect:", error);
     return {
       success: false,
-      error: error.message || 'Erro desconhecido ao criar convite',
+      error: error.message || 'Erro desconhecido ao criar convite de cliente',
       errorDetails: error
     };
   }

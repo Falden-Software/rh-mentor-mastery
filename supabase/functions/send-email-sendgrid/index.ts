@@ -44,17 +44,20 @@ serve(async (req) => {
     const fromName = "RH Mentor Mastery";
     const fromEmail = "convites@rhmaster.space";
     
-    // Conteúdo HTML para o email de convite
+    // Defina o tipo de convite (sempre para cliente)
+    const registerUrl = "https://rhmaster.space/register?type=client&email=" + encodeURIComponent(to);
+    
+    // Conteúdo HTML para o email de convite para cliente
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
         <h2 style="color: #4F46E5;">Olá ${personName},</h2>
         
-        <p>Você foi convidado(a) por <strong>${mentorName || fromName}</strong> para participar da plataforma RH Mentor Mastery.</p>
+        <p>Você foi convidado(a) por <strong>${mentorName || fromName}</strong> para participar da plataforma RH Mentor Mastery como cliente.</p>
         
         <p>Para se registrar, clique no link abaixo:</p>
         
         <p style="text-align: center;">
-          <a href="https://rhmaster.space/register?type=mentor&email=${encodeURIComponent(to)}" style="background-color: #4F46E5; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Registrar-se Agora</a>
+          <a href="${registerUrl}" style="background-color: #4F46E5; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Registrar-se como Cliente</a>
         </p>
         
         <p><em>Este convite é válido por 7 dias.</em></p>
@@ -85,7 +88,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Email enviado com sucesso",
+        message: "Email de convite para cliente enviado com sucesso",
         id: `sg_${Date.now()}`,
         service: "SendGrid"
       }),
