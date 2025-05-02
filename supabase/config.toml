@@ -1,5 +1,4 @@
 
-
 [functions.check-email-config]
 verify_jwt = true
 
@@ -11,4 +10,3 @@ verify_jwt = true
 
 [functions.send-email-sendgrid]
 verify_jwt = true
-
