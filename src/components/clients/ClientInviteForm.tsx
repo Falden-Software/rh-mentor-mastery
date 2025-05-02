@@ -9,6 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { InvitationService } from '@/services/invitations';
 import { StatusAlert } from '@/components/ui/status-alert';
+import { sendInviteEmail } from '@/services/invitations/emailService';
 
 interface ClientInviteFormProps {
   onInviteSent: () => void;
@@ -53,42 +54,44 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     setSuccessInfo(null);
 
     try {
-      console.log(`Tentando criar convite para cliente ${clientEmail} com nome ${clientName}`);
+      console.log(`Tentando enviar convite para cliente ${clientEmail} com nome ${clientName}`);
       
-      // Use the direct method that avoids RLS recursion
-      const result = await InvitationService.createInvitationDirect(
-        clientEmail, 
-        clientName, 
-        user?.id || ''
+      // Use direct email sending to avoid RLS recursion
+      const emailResult = await sendInviteEmail(
+        clientEmail,
+        clientName,
+        user?.name || 'Mentor'
       );
       
-      if (result.success) {
-        console.log("Convite de cliente enviado com sucesso:", result);
+      if (emailResult.success) {
+        console.log("Convite de cliente enviado com sucesso:", emailResult);
         toast.success("Convite enviado com sucesso!");
         setClientEmail('');
         setClientName('');
         setSuccessInfo({
-          service: result.service || 'Supabase',
-          message: result.message
+          service: emailResult.service || 'Sistema de Email',
+          message: `Convite enviado para ${clientEmail}`
         });
         onInviteSent();
       } else {
-        console.error("Erro no resultado do convite de cliente:", result);
+        console.error("Erro no envio de convite:", emailResult);
         
-        if (result.error?.includes('recursion')) {
+        if (emailResult.isApiKeyError) {
           setErrorType("warning");
-          setErrorMessage("Erro de configuração no sistema. Nossa equipe técnica foi notificada e está trabalhando para resolver o problema.");
-          toast.error("Erro de configuração. Por favor, tente novamente mais tarde.");
+          setErrorMessage("Chave de API não configurada. Por favor, contate o suporte.");
+        } else if (emailResult.isDomainError) {
+          setErrorType("warning");
+          setErrorMessage("Domínio de email não verificado. Por favor, contate o suporte.");
         } else {
           setErrorType("error");
-          setErrorMessage(result.error || 'Erro ao enviar convite de cliente');
-          toast.error(result.error || 'Erro ao enviar convite de cliente');
+          setErrorMessage(emailResult.error || 'Erro ao enviar convite');
         }
+        toast.error("Erro ao enviar convite");
       }
     } catch (error: any) {
-      console.error('Erro durante a submissão do convite de cliente:', error);
+      console.error('Erro durante o envio do convite:', error);
       setErrorType("error");
-      setErrorMessage('Erro interno ao processar convite de cliente');
+      setErrorMessage('Erro interno ao processar convite');
       toast.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsSubmitting(false);
@@ -139,28 +142,32 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
           <Label htmlFor="clientName">Nome completo</Label>
-          <Input
-            id="clientName"
-            placeholder="Digite o nome do cliente"
-            value={clientName}
-            onChange={(e) => setClientName(e.target.value)}
-            required
-            disabled={isSubmitting}
-          />
+          <FormControl>
+            <Input
+              id="clientName"
+              placeholder="Digite o nome do cliente"
+              value={clientName}
+              onChange={(e) => setClientName(e.target.value)}
+              required
+              disabled={isSubmitting}
+            />
+          </FormControl>
         </div>
         
         <div className="space-y-2">
           <Label htmlFor="clientEmail">Email</Label>
-          <Input
-            id="clientEmail"
-            type="email"
-            placeholder="cliente@empresa.com"
-            value={clientEmail}
-            onChange={(e) => setClientEmail(e.target.value)}
-            required
-            disabled={isSubmitting}
-            className={!validateEmail(clientEmail) && clientEmail ? "border-red-500" : ""}
-          />
+          <FormControl>
+            <Input
+              id="clientEmail"
+              type="email"
+              placeholder="cliente@empresa.com"
+              value={clientEmail}
+              onChange={(e) => setClientEmail(e.target.value)}
+              required
+              disabled={isSubmitting}
+              className={!validateEmail(clientEmail) && clientEmail ? "border-red-500" : ""}
+            />
+          </FormControl>
           {!validateEmail(clientEmail) && clientEmail && (
             <p className="text-red-500 text-sm mt-1">Email inválido</p>
           )}
@@ -181,3 +188,8 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     </div>
   );
 }
+
+// Add missing FormControl component
+const FormControl = ({ children }: { children: React.ReactNode }) => {
+  return <div className="mt-1">{children}</div>;
+};
