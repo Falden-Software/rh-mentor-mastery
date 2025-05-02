@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
-import { InvitationService } from "@/services/invitations";
 import { getMentorInvitations } from "@/services/invitations/getMentorInvitations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -12,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, Send, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { InvitationService } from "@/services/invitations";
 
 export default function InvitationHistory() {
   const [invitations, setInvitations] = useState<any[]>([]);

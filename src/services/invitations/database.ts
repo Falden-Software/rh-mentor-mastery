@@ -51,19 +51,3 @@ export const createNewInvite = async (email: string, mentorId: string) => {
   
   return data.id;
 };
-
-export const getMentorInvitations = async (mentorId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('invitation_codes')
-      .select('*')
-      .eq('mentor_id', mentorId)
-      .order('created_at', { ascending: false });
-      
-    if (error) throw error;
-    return data || [];
-  } catch (error) {
-    ErrorService.logError('database_error', error, { mentorId });
-    throw error;
-  }
-};
