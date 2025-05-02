@@ -177,6 +177,7 @@ export type Database = {
           id: string
           is_used: boolean
           mentor_id: string
+          role: string
           used_by: string | null
         }
         Insert: {
@@ -187,6 +188,7 @@ export type Database = {
           id?: string
           is_used?: boolean
           mentor_id: string
+          role?: string
           used_by?: string | null
         }
         Update: {
@@ -197,6 +199,7 @@ export type Database = {
           id?: string
           is_used?: boolean
           mentor_id?: string
+          role?: string
           used_by?: string | null
         }
         Relationships: [
