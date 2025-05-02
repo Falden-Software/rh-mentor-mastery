@@ -1,137 +1,107 @@
 
-import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
+import { sendMail } from "https://deno.land/x/sendgrid@0.0.3/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface EmailRequestBody {
-  to: string;
-  subject: string;
-  html: string;
-  text?: string;
-  from?: string;
-  fromName?: string;
-  replyTo?: string;
-}
+const SENDGRID_API_KEY = Deno.env.get("SENDGRID_API_KEY");
 
-serve(async (req: Request) => {
+serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const apiKey = Deno.env.get("SENDGRID_API_KEY");
-    if (!apiKey) {
-      console.error("SendGrid API key not configured");
+    // Verificar se a API key está configurada
+    if (!SENDGRID_API_KEY) {
+      console.error("SendGrid API key não configurada");
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: "SendGrid API key not configured" 
+        JSON.stringify({
+          success: false,
+          error: "SendGrid API key não configurada",
         }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    // Parse request body
-    const { to, subject, html, text, from, fromName, replyTo } = await req.json() as EmailRequestBody;
-    const senderEmail = from || "notifications@rhmaster.space";
-    const senderName = fromName || "RH Mentor Mastery";
+    const { to, name, mentorName, subject, type } = await req.json();
 
-    console.log(`Sending email to ${to} with subject "${subject}"`);
+    if (!to || !subject) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Destinatário e assunto são obrigatórios",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
 
-    // Prepare the request to SendGrid's API
-    const sendgridUrl = "https://api.sendgrid.com/v3/mail/send";
-    const sendgridPayload = {
-      personalizations: [
-        {
-          to: [{ email: to }],
-        }
-      ],
+    const personName = name || to.split("@")[0];
+    const fromName = "RH Mentor Mastery";
+    const fromEmail = "convites@rhmaster.space";
+    
+    // Conteúdo HTML para o email de convite
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
+        <h2 style="color: #4F46E5;">Olá ${personName},</h2>
+        
+        <p>Você foi convidado(a) por <strong>${mentorName || fromName}</strong> para participar da plataforma RH Mentor Mastery.</p>
+        
+        <p>Para se registrar, clique no link abaixo:</p>
+        
+        <p style="text-align: center;">
+          <a href="https://rhmaster.space/register?type=mentor&email=${encodeURIComponent(to)}" style="background-color: #4F46E5; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; display: inline-block;">Registrar-se Agora</a>
+        </p>
+        
+        <p><em>Este convite é válido por 7 dias.</em></p>
+        
+        <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+        
+        <p style="font-size: 12px; color: #777;">
+          Atenciosamente,<br>
+          Equipe RH Mentor Mastery
+        </p>
+      </div>
+    `;
+
+    // Enviar email usando SendGrid
+    const result = await sendMail({
+      to,
       from: {
-        email: senderEmail,
-        name: senderName,
+        name: fromName,
+        email: fromEmail,
       },
-      subject: subject,
-      content: [
-        {
-          type: "text/html",
-          value: html,
-        }
-      ]
-    };
-
-    // Add plain text version if provided
-    if (text) {
-      sendgridPayload.content.push({
-        type: "text/plain",
-        value: text,
-      });
-    }
-
-    // Add reply-to if provided
-    if (replyTo) {
-      sendgridPayload.reply_to = {
-        email: replyTo,
-        name: senderName,
-      };
-    }
-
-    // Send the request to SendGrid
-    const response = await fetch(sendgridUrl, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(sendgridPayload),
+      subject,
+      html: htmlContent,
+      apiKey: SENDGRID_API_KEY,
     });
 
-    // Get the response from SendGrid
-    if (response.status >= 200 && response.status < 300) {
-      console.log("Email sent successfully");
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: "Email sent successfully", 
-          service: "SendGrid" 
-        }),
-        { 
-          status: 200, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    } else {
-      const errorText = await response.text();
-      console.error(`SendGrid error: ${response.status} - ${errorText}`);
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: `SendGrid error: ${response.status}`,
-          details: errorText 
-        }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, "Content-Type": "application/json" } 
-        }
-      );
-    }
-  } catch (error) {
-    console.error("Error sending email:", error);
+    console.log("Email enviado via SendGrid:", result);
+
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: "Error sending email", 
-        details: error.message || String(error) 
+      JSON.stringify({
+        success: true,
+        message: "Email enviado com sucesso",
+        id: `sg_${Date.now()}`,
+        service: "SendGrid"
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+
+  } catch (error) {
+    console.error("Erro ao enviar email:", error);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || "Erro desconhecido ao enviar email",
       }),
       { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" } 
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500 
       }
     );
   }

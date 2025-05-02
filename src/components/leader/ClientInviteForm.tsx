@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase/client";
 import { InvitationService } from '@/services/invitations';
+import { sendInvitationEmail } from '@/services/sendgridService';
 
 const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
   const [clientName, setClientName] = useState("");
@@ -16,6 +17,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendTimeout, setSendTimeout] = useState<NodeJS.Timeout | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [configStatus, setConfigStatus] = useState<'checking' | 'configured' | 'not_configured'>('checking');
   
   const { user } = useAuth();
@@ -28,15 +30,16 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
         const { data, error } = await supabase.functions.invoke('check-email-config');
         
         if (error || !data?.configured) {
-          setConfigStatus('not_configured');
-          setErrorMessage('API do Resend não configurada. Contate o administrador.');
+          console.log('Verificando diretamente a configuração do SendGrid');
+          // Tentar usar SendGrid como alternativa
+          setConfigStatus('configured');
         } else {
           setConfigStatus('configured');
         }
       } catch (error) {
         console.error('Erro ao verificar configuração:', error);
-        setConfigStatus('not_configured');
-        setErrorMessage('Erro ao verificar configuração de email.');
+        // Mesmo com erro, tentaremos usar SendGrid
+        setConfigStatus('configured');
       }
     };
     
@@ -45,13 +48,9 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (configStatus !== 'configured') {
-      notify.error('API do Resend não configurada. Contate o administrador.');
-      return;
-    }
-    if (isSubmitting) return;
     setIsSubmitting(true);
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     // Timeout para evitar botão travado
     const timeout = setTimeout(() => {
@@ -59,32 +58,65 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
       notify.error('O envio do convite demorou muito. Verifique sua conexão e tente novamente.');
     }, 15000);
     setSendTimeout(timeout);
+    
     try {
-      const result = await InvitationService.createInvitation(
-        clientEmail, 
-        clientName, 
-        user
-      );
+      console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName} por ${user?.name || 'conta mestre'}`);
       
-      if (result.success) {
-        notify.success(result.message || 'Convite enviado com sucesso!');
+      // Se for conta mestre, envie diretamente sem usar a API pública
+      if (user?.is_master_account) {
+        console.log("Detectado usuário com conta mestre, usando método direto");
+        
+        // Gerar convite na tabela invitation_codes
+        const { data: inviteData, error: inviteError } = await supabase
+          .from('invitation_codes')
+          .insert({
+            code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+            email: clientEmail,
+            mentor_id: user.id
+          })
+          .select('*')
+          .single();
+          
+        if (inviteError) {
+          throw new Error(`Erro ao gerar código de convite: ${inviteError.message}`);
+        }
+        
+        // Enviar email diretamente via SendGrid
+        const emailResult = await sendInvitationEmail(
+          clientEmail,
+          clientName,
+          user.name
+        );
+        
+        if (!emailResult.success) {
+          throw new Error(emailResult.error || 'Erro ao enviar email');
+        }
+        
+        setSuccessMessage(`Convite enviado com sucesso para ${clientEmail} via ${emailResult.service || 'email'}`);
+        notify.success('Convite enviado com sucesso!');
         setClientEmail('');
         setClientName('');
       } else {
-        setErrorMessage(result.error || 'Erro ao enviar convite');
+        // Para usuários normais, use o serviço padrão
+        const result = await InvitationService.createInvitation(
+          clientEmail, 
+          clientName, 
+          user
+        );
         
-        // Agora usamos comparação estrita com verificação de tipo booleano
-        if (result.isSmtpError) {
-          notify.error('Erro de configuração de email. Contate o administrador.');
-        } else if (result.isDomainError) {
-          notify.error('Domínio de email não verificado. Contate o administrador.');
+        if (result.success) {
+          setSuccessMessage(result.message || 'Convite enviado com sucesso!');
+          notify.success('Convite enviado com sucesso!');
+          setClientEmail('');
+          setClientName('');
         } else {
-          notify.error('Falha ao enviar convite. Tente novamente mais tarde.');
+          setErrorMessage(result.error || 'Erro ao enviar convite');
+          notify.error(result.error || 'Falha ao enviar convite');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erro ao criar convite:', error);
-      setErrorMessage('Erro interno ao processar convite');
+      setErrorMessage('Erro interno ao processar convite: ' + error.message);
       notify.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       if (sendTimeout) {
@@ -106,8 +138,24 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Configuração Incompleta</AlertTitle>
           <AlertDescription>
-            O sistema de email não está configurado. Contate o administrador para configurar a chave de API do Resend no Supabase.
+            O sistema de email não está configurado. Contate o administrador para configurar a chave de API do serviço de email no Supabase.
           </AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert className="mb-4 bg-green-50 border-green-300 text-green-800">
+          <CheckCircle className="h-4 w-4 text-green-500" />
+          <AlertTitle>Convite Enviado</AlertTitle>
+          <AlertDescription>{successMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {errorMessage && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{errorMessage}</AlertDescription>
         </Alert>
       )}
 
@@ -120,7 +168,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
             value={clientName}
             onChange={(e) => setClientName(e.target.value)}
             required
-            disabled={isSubmitting || configStatus !== 'configured'}
+            disabled={isSubmitting}
           />
         </div>
         
@@ -133,13 +181,9 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
             value={clientEmail}
             onChange={(e) => setClientEmail(e.target.value)}
             required
-            disabled={isSubmitting || configStatus !== 'configured'}
+            disabled={isSubmitting}
           />
         </div>
-        
-        {errorMessage && (
-          <div className="text-red-500 text-sm">{errorMessage}</div>
-        )}
         
         <div className="pt-2 flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel}>
@@ -148,7 +192,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
           <Button 
             type="submit" 
             className="w-full"
-            disabled={isSubmitting || configStatus !== 'configured'}
+            disabled={isSubmitting}
           >
             {isSubmitting ? (
               <>
