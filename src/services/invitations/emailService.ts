@@ -24,17 +24,17 @@ export const sendInviteEmail = async (
 }> => {
   try {
     // Ensure email is defined and not just whitespace
-    if (!email || !email.trim()) {
+    if (!email || typeof email !== 'string' || !email.trim()) {
       console.error("Email vazio enviado para sendInviteEmail");
       return { 
         success: false, 
-        error: "Email do destinatário não fornecido" 
+        error: "Email do destinatário é obrigatório" 
       };
     }
 
     const trimmedEmail = email.trim();
-    const name = clientName || trimmedEmail.split('@')[0];
-    const mentor = mentorName || "Seu mentor";
+    const name = clientName && clientName.trim() ? clientName.trim() : trimmedEmail.split('@')[0];
+    const mentor = mentorName && mentorName.trim() ? mentorName.trim() : "Seu mentor";
     
     // Base URL - verificar ambiente
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.rhmentormastery.com';

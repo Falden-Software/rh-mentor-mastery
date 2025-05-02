@@ -25,10 +25,16 @@ interface InviteFormFieldsProps {
   onCancel: () => void;
 }
 
-// Create a schema for client invitation
+// Create a schema for client invitation with stricter validation
 const formSchema = z.object({
-  clientName: z.string().min(1, { message: "Nome é obrigatório" }).min(3, { message: "Nome deve ter pelo menos 3 caracteres" }),
-  clientEmail: z.string().min(1, { message: "Email é obrigatório" }).email({ message: "Email inválido" }),
+  clientName: z.string()
+    .trim()
+    .min(1, { message: "Nome é obrigatório" })
+    .min(3, { message: "Nome deve ter pelo menos 3 caracteres" }),
+  clientEmail: z.string()
+    .trim()
+    .min(1, { message: "Email é obrigatório" })
+    .email({ message: "Email inválido" })
 });
 
 export function InviteFormFields({
@@ -53,10 +59,12 @@ export function InviteFormFields({
   // Update form values when props change
   useEffect(() => {
     form.setValue('clientName', clientName);
+    form.reset({ clientName, clientEmail });
   }, [clientName, form]);
   
   useEffect(() => {
     form.setValue('clientEmail', clientEmail);
+    form.reset({ clientName, clientEmail });
   }, [clientEmail, form]);
 
   // Handle the form submission

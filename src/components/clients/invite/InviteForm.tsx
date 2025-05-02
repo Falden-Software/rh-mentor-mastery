@@ -61,6 +61,10 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
     try {
       console.log(`Tentando criar convite para ${trimmedEmail} com nome ${trimmedName}`);
       
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
+      
       // Use service to create invite with trimmed values
       const result = await InvitationService.createInvite(
         trimmedEmail, 

@@ -34,7 +34,22 @@ serve(async (req: Request) => {
       return new Response(
         JSON.stringify({
           success: false,
-          error: 'Email address is required',
+          error: 'Email do destinatário é obrigatório',
+          isApiKeyError: false,
+          isDomainError: false,
+          isSmtpError: false
+        }),
+        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+      );
+    }
+
+    // Validate client name
+    if (!clientName || typeof clientName !== 'string' || !clientName.trim()) {
+      console.error("Client name is required but missing or empty");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Nome do cliente é obrigatório',
           isApiKeyError: false,
           isDomainError: false,
           isSmtpError: false
@@ -44,6 +59,7 @@ serve(async (req: Request) => {
     }
 
     const trimmedEmail = email.trim();
+    const trimmedClientName = clientName.trim();
 
     // Log information about environment and API key availability
     console.log(`Sending invite email to ${trimmedEmail} in ${ENVIRONMENT} environment`);
@@ -51,7 +67,7 @@ serve(async (req: Request) => {
     
     // Build email HTML content
     const emailHtml = buildInviteEmailHtml(
-      clientName, 
+      trimmedClientName, 
       mentorName || 'Mentor', 
       mentorCompany || 'RH Mentor Mastery',
       registerUrl
