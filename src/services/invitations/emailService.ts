@@ -1,85 +1,63 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { ErrorService } from '../errorService';
-import { EmailResult } from './types';
+import { supabase } from "@/integrations/supabase/client";
+import { InvitationResult } from "./types";
 
+/**
+ * Envia um email de convite para um cliente
+ * @param email Email do cliente
+ * @param clientName Nome do cliente (opcional)
+ * @param mentorName Nome do mentor
+ * @param inviteCode Código do convite (opcional)
+ * @returns Resultado da operação
+ */
 export const sendInviteEmail = async (
   email: string,
-  name: string,
-  mentorName?: string
-): Promise<EmailResult> => {
+  clientName?: string,
+  mentorName?: string,
+  inviteCode?: string
+): Promise<InvitationResult> => {
   try {
-    // Get base URL from current environment
-    const baseUrl = typeof window !== 'undefined' 
-      ? window.location.origin 
-      : 'https://rhmaster.space';
-      
-    const registerUrl = `${baseUrl}/client/register?email=${encodeURIComponent(email)}`;
+    console.log(`Enviando email para: ${email}`, { clientName, mentorName, inviteCode });
     
-    const { data, error } = await supabase.functions.invoke<EmailResult>('send-invite-email', {
-      body: {
-        email,
-        clientName: name || 'Cliente',
-        mentorName: mentorName || 'Mentor',
-        mentorCompany: 'RH Mentor Mastery',
-        registerUrl
-      }
-    });
-    
-    if (error) {
-      console.error("Function invocation error:", error);
-      return {
-        success: false, 
-        error: `Erro na função de envio: ${error.message}`,
-        errorDetails: error,
-        isSmtpError: true,
-        isDomainError: false
-      };
-    }
-    
-    console.log("Edge function response:", data);
-    
-    // If no data returned from function, handle as an error
-    if (!data) {
+    if (!email) {
       return {
         success: false,
-        error: 'Resposta vazia da função de envio de email',
-        isSmtpError: true,
-        isDomainError: false
+        error: "Email do cliente é obrigatório"
+      };
+    }
+
+    // Preparar os dados para a função de edge
+    const payload = {
+      email,
+      clientName: clientName || email.split('@')[0], // Usar parte do email como nome se não fornecido
+      mentorName: mentorName || "Seu Mentor",
+      inviteCode: inviteCode || undefined
+    };
+
+    // Chamar a função edge para enviar o email
+    const { data, error } = await supabase.functions.invoke('send-invite-email', {
+      body: payload
+    });
+    
+    if (error || !data?.success) {
+      console.error("Erro ao enviar email:", error || data?.error);
+      return {
+        success: false,
+        error: data?.error || error?.message || "Erro desconhecido ao enviar email"
       };
     }
     
-    // Make sure all required properties are present in the response
+    console.log("Email enviado com sucesso:", data);
     return {
-      success: Boolean(data?.success), 
-      error: data?.error || undefined,
-      errorDetails: data?.errorDetails,
-      isSmtpError: Boolean(data?.isSmtpError),
-      isDomainError: Boolean(data?.isDomainError),
-      isApiKeyError: Boolean(data?.isApiKeyError),
-      service: data?.service || 'Supabase',
-      isTestMode: data?.isTestMode,
-      actualRecipient: data?.actualRecipient,
-      id: data?.id
+      success: true,
+      message: "Email enviado com sucesso"
     };
-  } catch (error) {
-    ErrorService.logError('email_error', error, {
-      function: 'send-invite-email',
-      email,
-      name
-    });
     
-    // Extract error message for classification
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    
-    // Return a properly typed error response
+  } catch (error: any) {
+    console.error("Erro ao enviar email:", error);
     return {
       success: false,
-      error: 'Erro interno ao enviar email via Supabase',
-      errorDetails: error,
-      isSmtpError: errorMsg.includes('SMTP') || errorMsg.includes('email'),
-      isDomainError: errorMsg.includes('domain') || errorMsg.includes('domínio'),
-      isApiKeyError: errorMsg.includes('API key') || errorMsg.includes('chave API')
+      error: error.message || "Erro desconhecido ao enviar email"
     };
   }
 };

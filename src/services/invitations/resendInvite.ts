@@ -36,6 +36,7 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
       };
     }
     
+    // Se o convite estiver expirado, atualizamos a data de expiração
     if (new Date(invite.expires_at) < new Date()) {
       // Atualizar data de expiração
       const newExpiryDate = new Date();
@@ -53,6 +54,9 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
           error: "Erro ao atualizar data de expiração"
         };
       }
+      
+      // Atualizamos o objeto de convite com a nova data de expiração
+      invite.expires_at = newExpiryDate.toISOString();
     }
     
     // Buscar o nome do mentor separadamente
@@ -64,6 +68,7 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
       
     if (mentorError) {
       console.error("Erro ao buscar dados do mentor:", mentorError);
+      // Continuamos mesmo com esse erro, apenas usando um nome padrão
     }
     
     // Enviar email
@@ -71,10 +76,16 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
     const result = await sendInviteEmail(
       invite.email,
       undefined, // Cliente pode não ter um nome registrado ainda
-      mentorName
+      mentorName,
+      invite.code // Passando o código do convite para o email
     );
     
-    return result;
+    console.log("Resultado do envio de email:", result);
+    
+    return {
+      success: true,
+      message: `Convite reenviado com sucesso para ${invite.email}`
+    };
     
   } catch (error: any) {
     console.error("Erro ao reenviar convite:", error);

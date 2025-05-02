@@ -53,11 +53,16 @@ export default function InvitationHistory() {
     try {
       if (!user?.id) return;
       
-      await InvitationService.resendInvite(inviteId, user.id);
-      toast({
-        title: "Convite reenviado",
-        description: "O convite foi reenviado com sucesso."
-      });
+      const result = await InvitationService.resendInvite(inviteId, user.id);
+      
+      if (result.success) {
+        toast({
+          title: "Convite reenviado",
+          description: "O convite foi reenviado com sucesso."
+        });
+      } else {
+        throw new Error(result.error || "Não foi possível reenviar o convite.");
+      }
     } catch (err: any) {
       console.error("Erro ao reenviar convite:", err);
       toast({

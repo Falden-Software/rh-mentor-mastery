@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { ClientRegisterForm, ClientRegistrationFormData } from "@/components/auth/client/ClientRegisterForm";
 import { useInviteVerification } from "@/hooks/useInviteVerification";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, XCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 export default function ClientRegister() {
   const { toast } = useToast();
@@ -24,7 +25,10 @@ export default function ClientRegister() {
   const token = searchParams.get("token"); // Token de convite do Supabase
   
   // Verificar o token de convite
-  const { isVerifying, isVerified, mentorId: verifiedMentorId } = useInviteVerification({ token, email: clientEmail });
+  const { isVerifying, isVerified, error: verificationError, mentorId: verifiedMentorId } = useInviteVerification({ 
+    token, 
+    email: clientEmail 
+  });
   
   // Usar o mentorId verificado se disponível, senão usar o da URL
   const effectiveMentorId = verifiedMentorId || mentorId;
@@ -114,6 +118,8 @@ export default function ClientRegister() {
         
         if (updateError) {
           console.error("Erro ao atualizar códigos de convite:", updateError);
+        } else {
+          console.log("Convite(s) marcado(s) como utilizado(s)");
         }
         
         // Vincular cliente ao mentor
@@ -127,14 +133,14 @@ export default function ClientRegister() {
         } else {
           console.log("Cliente vinculado com sucesso ao mentor:", mentorIdToUse);
         }
+        
+        toast({
+          title: "Conta criada com sucesso",
+          description: "Bem-vindo! Sua conta foi criada com sucesso.",
+        });
+        
+        navigate("/client/login");
       }
-      
-      toast({
-        title: "Conta criada com sucesso",
-        description: "Bem-vindo! Sua conta foi criada com sucesso.",
-      });
-      
-      navigate("/client/login");
     } catch (error) {
       console.error("Erro no registro:", error);
       setFormError(error instanceof Error ? error.message : "Ocorreu um erro durante o registro.");
@@ -148,10 +154,47 @@ export default function ClientRegister() {
       setIsLoading(false);
     }
   };
+  
+  // Se estiver com erro de verificação e não estiver mais verificando
+  if (verificationError && !isVerifying) {
+    return (
+      <div className="container flex h-screen w-screen flex-col items-center justify-center">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-2xl text-center">Erro de Convite</CardTitle>
+              <CardDescription className="text-center">
+                Não foi possível verificar seu convite
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert variant="destructive" className="mb-4">
+                <XCircle className="h-4 w-4" />
+                <AlertTitle>Erro no convite</AlertTitle>
+                <AlertDescription>{verificationError}</AlertDescription>
+              </Alert>
+              <p className="text-center text-muted-foreground mt-4">
+                O convite pode ter expirado ou já foi utilizado. Entre em contato com seu mentor para obter um novo convite.
+              </p>
+            </CardContent>
+            <CardFooter className="flex flex-col space-y-4">
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                onClick={() => navigate('/client/login')}
+              >
+                Ir para login
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
-      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+      <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[400px]">
         <Card>
           <CardHeader>
             <CardTitle className="text-2xl text-center">Criar conta</CardTitle>
