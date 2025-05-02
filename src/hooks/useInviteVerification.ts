@@ -33,6 +33,11 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
           
           if (inviteError) {
             console.error("Erro ao verificar convite:", inviteError);
+            toast({
+              variant: "destructive",
+              title: "Erro",
+              description: "Não foi possível verificar o seu convite. Por favor, tente novamente mais tarde."
+            });
           } else if (inviteData && inviteData.length > 0) {
             setIsVerified(true);
             setMentorId(inviteData[0].mentor_id);
@@ -46,14 +51,42 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
           // This would typically involve a Supabase function call or API check
           console.log("Token de convite fornecido:", token);
           
-          // For now, we'll just assume the token is valid
-          setIsVerified(true);
-        } else {
-          setIsVerified(false);
+          const { data: inviteData, error: inviteError } = await supabase
+            .from('invitation_codes')
+            .select('*')
+            .eq('code', token)
+            .eq('is_used', false)
+            .gt('expires_at', new Date().toISOString())
+            .order('created_at', { ascending: false })
+            .limit(1);
+            
+          if (inviteError) {
+            console.error("Erro ao verificar token de convite:", inviteError);
+            toast({
+              variant: "destructive",
+              title: "Erro",
+              description: "Não foi possível verificar o seu token de convite. Por favor, tente novamente mais tarde."
+            });
+          } else if (inviteData && inviteData.length > 0) {
+            setIsVerified(true);
+            setMentorId(inviteData[0].mentor_id);
+          } else {
+            setIsVerified(false);
+            toast({
+              variant: "destructive",
+              title: "Token inválido",
+              description: "O token de convite fornecido é inválido ou expirou."
+            });
+          }
         }
       } catch (error) {
         console.error("Erro ao processar convite:", error);
         setIsVerified(false);
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Ocorreu um erro ao processar seu convite. Por favor, tente novamente mais tarde."
+        });
       } finally {
         setIsVerifying(false);
       }
