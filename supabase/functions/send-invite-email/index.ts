@@ -28,8 +28,9 @@ serve(async (req: Request) => {
       registerUrl 
     }: EmailRequestBody = await req.json();
 
-    if (!email) {
-      console.error("Email address is required but missing");
+    // Validate email - ensure it exists and is not just whitespace
+    if (!email || typeof email !== 'string' || !email.trim()) {
+      console.error("Email address is required but missing or empty");
       return new Response(
         JSON.stringify({
           success: false,
@@ -42,8 +43,10 @@ serve(async (req: Request) => {
       );
     }
 
+    const trimmedEmail = email.trim();
+
     // Log information about environment and API key availability
-    console.log(`Sending invite email to ${email} in ${ENVIRONMENT} environment`);
+    console.log(`Sending invite email to ${trimmedEmail} in ${ENVIRONMENT} environment`);
     console.log(`RESEND_API_KEY available: ${Boolean(RESEND_API_KEY)}`);
     
     // Build email HTML content
@@ -60,7 +63,7 @@ serve(async (req: Request) => {
         console.log("Attempting to send via Resend API");
         
         const result = await sendWithResend(
-          email, 
+          trimmedEmail, 
           'Convite para RH Mentor Mastery',
           emailHtml
         );

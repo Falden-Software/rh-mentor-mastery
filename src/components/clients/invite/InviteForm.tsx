@@ -34,13 +34,17 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!clientEmail || !clientEmail.trim()) {
+    // Validate email (trim to remove whitespace)
+    const trimmedEmail = clientEmail ? clientEmail.trim() : "";
+    if (!trimmedEmail) {
       setErrorMessage("Email do cliente é obrigatório.");
       setErrorType("error");
       return;
     }
     
-    if (!clientName || !clientName.trim()) {
+    // Validate name (trim to remove whitespace)
+    const trimmedName = clientName ? clientName.trim() : "";
+    if (!trimmedName) {
       setErrorMessage("Nome do cliente é obrigatório.");
       setErrorType("error");
       return;
@@ -55,12 +59,12 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
     setErrorDetails(null);
 
     try {
-      console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName}`);
+      console.log(`Tentando criar convite para ${trimmedEmail} com nome ${trimmedName}`);
       
-      // Use service to create invite
+      // Use service to create invite with trimmed values
       const result = await InvitationService.createInvite(
-        clientEmail, 
-        clientName, 
+        trimmedEmail, 
+        trimmedName, 
         user
       );
       
@@ -71,7 +75,7 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
         setClientName('');
         setSuccessInfo({
           service: result.service || 'Sistema de Email',
-          message: `Convite enviado para ${clientEmail}`
+          message: `Convite enviado para ${trimmedEmail}`
         });
         onInviteSent();
       } else {

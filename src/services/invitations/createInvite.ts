@@ -13,10 +13,21 @@ export const createInvite = async (
   mentor: AuthUser | null
 ): Promise<InvitationResult> => {
   try {
-    if (!email || !email.trim()) {
+    // Ensure email is defined, not null, and not just whitespace
+    const trimmedEmail = email && typeof email === 'string' ? email.trim() : '';
+    if (!trimmedEmail) {
       return { 
         success: false, 
         error: "Email é obrigatório" 
+      };
+    }
+
+    // Ensure name is defined and not just whitespace
+    const trimmedName = name && typeof name === 'string' ? name.trim() : '';
+    if (!trimmedName) {
+      return { 
+        success: false, 
+        error: "Nome é obrigatório" 
       };
     }
 
@@ -27,10 +38,10 @@ export const createInvite = async (
       };
     }
 
-    // Normalize the parameters
+    // Normalize the parameters with trimmed values
     const inviteParams: InviteCreateParams = {
-      email: email.trim(),
-      name: name.trim(),
+      email: trimmedEmail,
+      name: trimmedName,
       mentor
     };
 
@@ -67,7 +78,7 @@ export const createInvite = async (
         service: emailResult.service
       };
     } else {
-      ErrorService.logError('email_error', new Error(emailResult.error), {
+      ErrorService.logError('email_error', new Error(emailResult.error || 'Unknown email error'), {
         email: validatedData.email,
         inviteId,
         errorDetails: emailResult.errorDetails

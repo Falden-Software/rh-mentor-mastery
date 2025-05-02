@@ -23,6 +23,7 @@ export const sendInviteEmail = async (
   errorDetails?: any;
 }> => {
   try {
+    // Ensure email is defined and not just whitespace
     if (!email || !email.trim()) {
       console.error("Email vazio enviado para sendInviteEmail");
       return { 
@@ -31,19 +32,20 @@ export const sendInviteEmail = async (
       };
     }
 
-    const name = clientName || email.split('@')[0];
+    const trimmedEmail = email.trim();
+    const name = clientName || trimmedEmail.split('@')[0];
     const mentor = mentorName || "Seu mentor";
     
     // Base URL - verificar ambiente
     const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.rhmentormastery.com';
-    const registrationUrl = `${baseUrl}/client/register?email=${encodeURIComponent(email.trim())}`;
+    const registrationUrl = `${baseUrl}/client/register?email=${encodeURIComponent(trimmedEmail)}`;
     
-    console.log(`Enviando email para ${email} com URL de registro: ${registrationUrl}`);
+    console.log(`Enviando email para ${trimmedEmail} com URL de registro: ${registrationUrl}`);
 
     // Chamar a Edge Function para enviar o email
     const { data, error } = await supabase.functions.invoke('send-invite-email', {
       body: {
-        email: email.trim(),
+        email: trimmedEmail,
         clientName: name,
         mentorName: mentor,
         mentorCompany: 'RH Mentor Mastery',

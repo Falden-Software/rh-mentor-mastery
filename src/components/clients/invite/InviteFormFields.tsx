@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,8 +27,8 @@ interface InviteFormFieldsProps {
 
 // Create a schema for client invitation
 const formSchema = z.object({
-  clientName: z.string().min(3, { message: "Nome deve ter pelo menos 3 caracteres" }),
-  clientEmail: z.string().email({ message: "Email inválido" }),
+  clientName: z.string().min(1, { message: "Nome é obrigatório" }).min(3, { message: "Nome deve ter pelo menos 3 caracteres" }),
+  clientEmail: z.string().min(1, { message: "Email é obrigatório" }).email({ message: "Email inválido" }),
 });
 
 export function InviteFormFields({
@@ -44,16 +44,26 @@ export function InviteFormFields({
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      clientName,
-      clientEmail
+      clientName: clientName || "",
+      clientEmail: clientEmail || ""
     },
     mode: "onChange"
   });
 
+  // Update form values when props change
+  useEffect(() => {
+    form.setValue('clientName', clientName);
+  }, [clientName, form]);
+  
+  useEffect(() => {
+    form.setValue('clientEmail', clientEmail);
+  }, [clientEmail, form]);
+
   // Handle the form submission
   const handleSubmit = form.handleSubmit((values) => {
-    setClientName(values.clientName);
-    setClientEmail(values.clientEmail);
+    // Trim values before setting
+    setClientName(values.clientName.trim());
+    setClientEmail(values.clientEmail.trim());
     
     // Call the parent component's onSubmit
     onSubmit(new Event('submit') as any);
@@ -73,7 +83,6 @@ export function InviteFormFields({
                   placeholder="Digite o nome do cliente"
                   disabled={isSubmitting}
                   {...field}
-                  value={field.value}
                   onChange={(e) => {
                     field.onChange(e);
                     setClientName(e.target.value);
@@ -98,7 +107,6 @@ export function InviteFormFields({
                   placeholder="cliente@empresa.com"
                   disabled={isSubmitting}
                   {...field}
-                  value={field.value}
                   onChange={(e) => {
                     field.onChange(e);
                     setClientEmail(e.target.value);
