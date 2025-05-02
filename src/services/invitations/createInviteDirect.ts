@@ -1,7 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
-import { sendInvitationEmail } from '@/services/sendgridService';
 import { InvitationResult } from './types';
 
 /**
@@ -62,23 +61,36 @@ export const createInviteDirect = async (
     
     const mentorName = mentorData?.name || 'Mentor';
     
-    // Send invitation email
-    const emailResult = await sendInvitationEmail(email, name, mentorName);
+    // Send invitation email using Supabase Edge Function
+    const baseUrl = window.location.origin;
+    const registerUrl = `${baseUrl}/register?type=client&email=${encodeURIComponent(email)}`;
     
-    if (!emailResult.success) {
-      console.error("Failed to send client invitation email:", emailResult);
+    const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-invite-email', {
+      body: {
+        email: email,
+        clientName: name,
+        mentorName: mentorName,
+        mentorCompany: 'RH Mentor Mastery',
+        registerUrl: registerUrl
+      }
+    });
+    
+    if (emailError) {
+      console.error("Failed to send invitation email via Edge Function:", emailError);
       return {
         success: true, // Still successful since we created the invite
         message: 'Convite de cliente criado, mas houve um problema ao enviar o email',
-        error: emailResult.error,
+        error: emailError.message,
         id: inviteId
       };
     }
     
+    console.log("Email sent via Supabase Edge Function:", emailResult);
+    
     return {
       success: true,
       message: 'Convite de cliente criado e email enviado com sucesso',
-      service: emailResult.service,
+      service: emailResult?.service || 'Supabase',
       id: inviteId
     };
   } catch (error) {

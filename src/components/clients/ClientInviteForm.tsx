@@ -68,7 +68,7 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
         setClientEmail('');
         setClientName('');
         setSuccessInfo({
-          service: result.service || 'Email',
+          service: result.service || 'Supabase',
           message: result.message
         });
         onInviteSent();

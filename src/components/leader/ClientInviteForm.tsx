@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import useNotifications from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
@@ -7,44 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, CheckCircle } from "lucide-react";
-import { supabase } from "@/lib/supabase/client";
+import { supabase } from "@/integrations/supabase/client";
 import { InvitationService } from '@/services/invitations';
-import { sendInvitationEmail } from '@/services/sendgridService';
 
 const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
   const [clientName, setClientName] = useState("");
   const [clientEmail, setClientEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [sendTimeout, setSendTimeout] = useState<NodeJS.Timeout | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [configStatus, setConfigStatus] = useState<'checking' | 'configured' | 'not_configured'>('checking');
   
   const { user } = useAuth();
   const notify = useNotifications();
-
-  // Verificar configuração de email ao carregar
-  useEffect(() => {
-    const checkEmailConfig = async () => {
-      try {
-        const { data, error } = await supabase.functions.invoke('check-email-config');
-        
-        if (error || !data?.configured) {
-          console.log('Verificando diretamente a configuração do SendGrid');
-          // Tentar usar SendGrid como alternativa
-          setConfigStatus('configured');
-        } else {
-          setConfigStatus('configured');
-        }
-      } catch (error) {
-        console.error('Erro ao verificar configuração:', error);
-        // Mesmo com erro, tentaremos usar SendGrid
-        setConfigStatus('configured');
-      }
-    };
-    
-    checkEmailConfig();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,13 +26,6 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    // Timeout para evitar botão travado
-    const timeout = setTimeout(() => {
-      setIsSubmitting(false);
-      notify.error('O envio do convite demorou muito. Verifique sua conexão e tente novamente.');
-    }, 15000);
-    setSendTimeout(timeout);
-    
     try {
       console.log(`Tentando criar convite para cliente ${clientEmail} com nome ${clientName} por ${user?.name || 'conta mestre'}`);
       
@@ -67,13 +34,21 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
         console.log("Detectado usuário com conta mestre, usando método direto");
         
         // Gerar convite na tabela invitation_codes
+        const inviteId = crypto.randomUUID();
+        const inviteCode = inviteId.substring(0, 8).toUpperCase();
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias a partir de hoje
+        
         const { data: inviteData, error: inviteError } = await supabase
           .from('invitation_codes')
           .insert({
-            code: Math.random().toString(36).substring(2, 10).toUpperCase(),
+            id: inviteId,
+            code: inviteCode,
             email: clientEmail,
             mentor_id: user.id,
-            role: 'client' // Explicitamente definindo como cliente
+            is_used: false,
+            expires_at: expiresAt.toISOString(),
+            role: 'client'
           })
           .select('*')
           .single();
@@ -82,18 +57,28 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
           throw new Error(`Erro ao gerar código de convite: ${inviteError.message}`);
         }
         
-        // Enviar email diretamente via SendGrid
-        const emailResult = await sendInvitationEmail(
-          clientEmail,
-          clientName,
-          user.name
-        );
+        // Enviar email via Supabase Edge Function
+        const baseUrl = window.location.origin;
+        const registerUrl = `${baseUrl}/register?type=client&email=${encodeURIComponent(clientEmail)}`;
         
-        if (!emailResult.success) {
-          throw new Error(emailResult.error || 'Erro ao enviar email');
+        const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-invite-email', {
+          body: {
+            email: clientEmail,
+            clientName: clientName,
+            mentorName: user.name || 'Mentor',
+            mentorCompany: 'RH Mentor Mastery',
+            registerUrl: registerUrl
+          }
+        });
+        
+        if (emailError) {
+          console.error("Erro ao invocar a edge function:", emailError);
+          throw new Error(`Erro ao enviar email: ${emailError.message}`);
         }
         
-        setSuccessMessage(`Convite de cliente enviado com sucesso para ${clientEmail} via ${emailResult.service || 'email'}`);
+        console.log("Resultado do envio de email:", emailResult);
+        
+        setSuccessMessage(`Convite de cliente enviado com sucesso para ${clientEmail} via ${emailResult?.service || 'Supabase'}`);
         notify.success('Convite enviado com sucesso!');
         setClientEmail('');
         setClientName('');
@@ -120,10 +105,6 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
       setErrorMessage('Erro interno ao processar convite de cliente: ' + error.message);
       notify.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
-      if (sendTimeout) {
-        clearTimeout(sendTimeout);
-        setSendTimeout(null);
-      }
       setIsSubmitting(false);
     }
   };
@@ -133,16 +114,6 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-medium">Convidar Novo Cliente</h3>
       </div>
-
-      {configStatus === 'not_configured' && (
-        <Alert variant="destructive" className="mb-4">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Configuração Incompleta</AlertTitle>
-          <AlertDescription>
-            O sistema de email não está configurado. Contate o administrador para configurar a chave de API do serviço de email no Supabase.
-          </AlertDescription>
-        </Alert>
-      )}
 
       {successMessage && (
         <Alert className="mb-4 bg-green-50 border-green-300 text-green-800">

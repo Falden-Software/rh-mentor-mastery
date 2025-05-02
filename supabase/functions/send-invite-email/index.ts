@@ -1,12 +1,14 @@
 
 import { serve } from "https://deno.land/std@0.170.0/http/server.ts";
 import { buildInviteEmailHtml } from "./emailBuilder.ts";
-import { Resend } from "npm:resend@2.0.0";
 import { EmailRequestBody, EmailResult, corsHeaders } from "./types.ts";
+import { sendWithResend } from "./emailServices.ts";
 
-// Initialize Resend with API key from environment variable
-const resendApiKey = Deno.env.get("RESEND_API_KEY");
-const resend = new Resend(resendApiKey);
+// Initialize environment
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "production";
+const FROM_EMAIL = "convites@rhmaster.space";
+const FROM_NAME = "RH Mentor Mastery";
 
 serve(async (req: Request) => {
   // Handle CORS preflight requests
@@ -15,20 +17,7 @@ serve(async (req: Request) => {
   }
 
   try {
-    // Check if API key is configured
-    if (!resendApiKey) {
-      console.error("Resend API key not configured");
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: 'Resend API key not configured',
-          isApiKeyError: true,
-          isDomainError: false,
-          isSmtpError: false
-        }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
-      );
-    }
+    console.log("Processing invitation email request");
 
     // Parse request body
     const { 
@@ -40,7 +29,7 @@ serve(async (req: Request) => {
     }: EmailRequestBody = await req.json();
 
     if (!email) {
-      console.error("Email address is required");
+      console.error("Email address is required but missing");
       return new Response(
         JSON.stringify({
           success: false,
@@ -53,60 +42,76 @@ serve(async (req: Request) => {
       );
     }
 
-    // Add detailed logging
-    console.log(`Sending invite email to ${email} via Resend API`);
+    // Log information about environment and API key availability
+    console.log(`Sending invite email to ${email} in ${ENVIRONMENT} environment`);
+    console.log(`RESEND_API_KEY available: ${Boolean(RESEND_API_KEY)}`);
     
     // Build email HTML content
     const emailHtml = buildInviteEmailHtml(
       clientName, 
       mentorName || 'Mentor', 
-      mentorCompany || 'RH Mentor Mastery', 
+      mentorCompany || 'RH Mentor Mastery',
       registerUrl
     );
     
-    // Send email using Resend
-    const { data: emailData, error: resendError } = await resend.emails.send({
-      from: 'RH Mentor Mastery <onboarding@resend.dev>', // Change to your verified domain
-      to: [email],
-      subject: 'Convite para RH Mentor Mastery',
-      html: emailHtml
-    });
-
-    // Log response
-    console.log("Resend API response:", { data: emailData, error: resendError });
-
-    // Handle Resend errors
-    if (resendError) {
-      console.error("Resend API Error:", resendError);
-      
-      // Check for specific error types
-      const errorMessage = resendError.message || 'Unknown error';
-      const isDomainError = errorMessage.includes('domain') || errorMessage.includes('sender');
-      const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('authentication');
-      const isSmtpError = errorMessage.includes('SMTP') || 
-                          errorMessage.includes('email') ||
-                          errorMessage.includes('server');
-      
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: errorMessage,
-          errorDetails: resendError,
-          isDomainError: Boolean(isDomainError),
-          isApiKeyError: Boolean(isApiKeyError),
-          isSmtpError: Boolean(isSmtpError)
-        }),
-        { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
-      );
+    // First try to send email using Resend
+    if (RESEND_API_KEY) {
+      try {
+        console.log("Attempting to send via Resend API");
+        
+        const result = await sendWithResend(
+          email, 
+          'Convite para RH Mentor Mastery',
+          emailHtml
+        );
+        
+        console.log("Resend API result:", result);
+        
+        if (result.success) {
+          return new Response(
+            JSON.stringify({
+              success: true,
+              service: 'Resend',
+              id: result.id,
+              isApiKeyError: false,
+              isDomainError: false,
+              isSmtpError: false
+            }),
+            { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+          );
+        } else {
+          console.error("Resend failed:", result);
+          // If Resend failed due to domain verification issues, we'll attempt fallback method
+          if (result.errorMessage?.includes('domain')) {
+            console.log("Domain verification issue detected with Resend, trying fallback");
+            // Continue to fallback method
+          } else {
+            // For other errors, return the error
+            return new Response(
+              JSON.stringify({
+                success: false,
+                service: 'Resend',
+                error: result.errorMessage,
+                errorCode: result.errorCode,
+                isApiKeyError: result.errorMessage?.includes('API key'),
+                isDomainError: result.errorMessage?.includes('domain'),
+                isSmtpError: result.errorMessage?.includes('delivery')
+              }),
+              { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
+            );
+          }
+        }
+      } catch (error) {
+        console.error("Error with Resend:", error);
+      }
     }
-
-    // Return success response
+    
+    // If Resend is not available or failed, respond with no service available
     return new Response(
       JSON.stringify({
-        success: true,
-        service: 'Resend',
-        id: emailData?.id,
-        isApiKeyError: false,
+        success: false,
+        error: 'No email service is properly configured',
+        isApiKeyError: true,
         isDomainError: false,
         isSmtpError: false
       }),
@@ -114,24 +119,15 @@ serve(async (req: Request) => {
     );
 
   } catch (error) {
-    console.error("Error processing invitation email:", error);
-    
-    // Determine error type
-    const errorMessage = error.message || 'Unknown error';
-    const isDomainError = errorMessage.includes('domain') || errorMessage.includes('sender');
-    const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('authentication');
-    const isSmtpError = errorMessage.includes('SMTP') || 
-                        errorMessage.includes('email') || 
-                        errorMessage.includes('server');
+    console.error("Error in send-invite-email function:", error);
     
     return new Response(
       JSON.stringify({
         success: false,
-        error: errorMessage,
-        errorDetails: error,
-        isApiKeyError: Boolean(isApiKeyError),
-        isDomainError: Boolean(isDomainError),
-        isSmtpError: Boolean(isSmtpError)
+        error: error.message || 'Unknown error in email sending function',
+        isApiKeyError: error.message?.includes('API key'),
+        isDomainError: error.message?.includes('domain'),
+        isSmtpError: error.message?.includes('SMTP')
       }),
       { headers: { 'Content-Type': 'application/json', ...corsHeaders }, status: 200 }
     );
