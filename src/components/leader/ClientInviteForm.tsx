@@ -84,7 +84,7 @@ const ClientInviteForm = ({ onCancel }: { onCancel: () => void }) => {
         setClientName('');
       } else {
         // Para usuários normais, use o serviço padrão
-        const result = await InvitationService.createInvitation(
+        const result = await InvitationService.createInvite(
           clientEmail, 
           clientName, 
           user

@@ -5,7 +5,7 @@ import { AuthUser } from '@/lib/authTypes';
 
 export const createClientInvitation = async (email: string, name: string, mentorId: string) => {
   const mentor = { id: mentorId, name: 'Mentor' }; // Simplificado para compatibilidade
-  return InvitationService.createInvitation(email, name, mentor as AuthUser);
+  return InvitationService.createInvite(email, name, mentor as AuthUser);
 };
 
 export const sendInviteEmail = async (inviteId: string) => {
@@ -14,7 +14,7 @@ export const sendInviteEmail = async (inviteId: string) => {
   if (!mentorId) {
     throw new Error("Convite não encontrado");
   }
-  return InvitationService.resendInvitation(inviteId, mentorId);
+  return InvitationService.resendInvite(inviteId, mentorId);
 };
 
 // Função auxiliar para obter o mentor_id de um convite

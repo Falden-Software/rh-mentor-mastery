@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -50,7 +51,7 @@ export function InviteClientForm({ onInviteSent }: InviteClientFormProps) {
     try {
       console.log("Sending invite to:", data.email);
       
-      const result = await InvitationService.createInvitation(
+      const result = await InvitationService.createInvite(
         data.email,
         data.name,
         user
