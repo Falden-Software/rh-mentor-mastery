@@ -1,7 +1,8 @@
+
 import { supabase } from '@/lib/supabase/client';
 import { AuthUser } from '@/lib/authTypes';
 import { v4 as uuidv4 } from 'uuid';
-import { InvitationResult } from './types';
+import { InvitationResult, EmailResult } from './types';
 import { sendInviteEmail } from './emailService';
 import { ErrorService } from '../errorService';
 
@@ -80,7 +81,7 @@ export class InvitationService {
         success: true,
         message: "Convite enviado com sucesso",
         service: emailResult.service,
-        id: emailResult.id,
+        id: emailResult.id || inviteId,
         isSmtpError: false,
         isDomainError: false,
         isApiKeyError: false
@@ -169,7 +170,7 @@ export const sendTestEmail = async (email: string): Promise<EmailResult> => {
     // Function implementation
     return {
       success: true,
-      id: 'test-id', // Adding id property that was previously missing
+      id: 'test-id',
       service: 'Test Email Service'
     };
   } catch (error: any) {

@@ -4,6 +4,7 @@ import { getMentorInvitations } from './getMentorInvitations';
 import { sendInviteEmail } from './emailService';
 import { supabase } from '@/lib/supabase/client';
 import { InvitationResult, EmailResult } from './types';
+import { createInvite } from './createInvite';
 
 interface InvitationData {
   email: string;
@@ -14,6 +15,7 @@ interface InvitationData {
 export const InvitationService = {
   resendInvite,
   getMentorInvitations,
+  createInvite,
   
   async createInvite(
     email: string, 
@@ -73,4 +75,4 @@ export const InvitationService = {
 
 // Re-export types and functions
 export type { InvitationResult, EmailResult };
-export { sendInviteEmail, getMentorInvitations, resendInvite };
+export { sendInviteEmail, getMentorInvitations, resendInvite, createInvite };

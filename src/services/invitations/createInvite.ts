@@ -95,7 +95,7 @@ export const createInvite = async (
         ErrorService.logError('email_error', new Error(emailResult.error || 'Unknown email error'), {
           email: validatedData.email,
           inviteId,
-          errorDetails: emailResult.errorDetails
+          errorDetails: emailResult.errorDetails || { error: emailResult.error }
         });
         
         return {
@@ -105,7 +105,7 @@ export const createInvite = async (
           isDomainError: emailResult.isDomainError,
           isApiKeyError: emailResult.isApiKeyError,
           isSmtpError: emailResult.isSmtpError,
-          errorDetails: emailResult.errorDetails
+          errorDetails: emailResult.errorDetails || { error: emailResult.error }
         };
       }
     } catch (validationError) {

@@ -143,7 +143,7 @@ export async function createInviteDirect(
         isDomainError: emailResult.isDomainError,
         isApiKeyError: emailResult.isApiKeyError,
         isSmtpError: emailResult.isSmtpError,
-        errorDetails: emailResult.errorDetails
+        errorDetails: emailResult.errorDetails || { error: emailResult.error }
       };
     }
   } catch (error: any) {

@@ -1,15 +1,6 @@
 
 import { supabase } from '@/lib/supabase/client';
-
-interface EmailResult {
-  success: boolean;
-  message?: string;
-  error?: string;
-  service?: string;
-  isApiKeyError?: boolean;
-  isDomainError?: boolean;
-  isSmtpError?: boolean;
-}
+import { EmailResult } from './types';
 
 /**
  * Envia um email de convite para um cliente através da Edge Function
@@ -28,7 +19,8 @@ export const sendInviteEmail = async (
     if (!email) {
       return {
         success: false,
-        error: 'Email não fornecido'
+        error: 'Email não fornecido',
+        errorDetails: { reason: 'missing_email' }
       };
     }
     
@@ -51,7 +43,8 @@ export const sendInviteEmail = async (
       return {
         success: false,
         error: error.message || 'Erro ao enviar convite',
-        isSmtpError: true
+        isSmtpError: true,
+        errorDetails: error
       };
     }
     
@@ -62,14 +55,16 @@ export const sendInviteEmail = async (
         service: data.service || 'Email',
         isApiKeyError: data.isApiKeyError,
         isDomainError: data.isDomainError, 
-        isSmtpError: data.isSmtpError
+        isSmtpError: data.isSmtpError,
+        errorDetails: data.errorDetails || data
       };
     }
     
     return {
       success: true,
       message: 'Convite enviado com sucesso',
-      service: data.service
+      service: data.service,
+      id: data.id
     };
   } catch (error: any) {
     console.error("Error in sendInviteEmail:", error);
@@ -77,7 +72,8 @@ export const sendInviteEmail = async (
     return {
       success: false,
       error: error.message || 'Erro desconhecido ao enviar email',
-      isSmtpError: true
+      isSmtpError: true,
+      errorDetails: error
     };
   }
 };
