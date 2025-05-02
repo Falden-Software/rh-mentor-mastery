@@ -5,7 +5,7 @@ import { InvitationCode } from '@/types/models';
 
 /**
  * Retrieves all invitations sent by a specific mentor
- * This function avoids the recursion policy issue by using a direct query
+ * This function avoids the recursion policy issue by using a direct query without joins
  * 
  * @param mentorId - The ID of the mentor whose invitations should be fetched
  * @returns Array of invitation objects
@@ -14,7 +14,7 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
   try {
     console.log("Buscando convites para mentor:", mentorId);
     
-    // Approach without join to avoid RLS recursion
+    // Query without join to avoid RLS recursion
     const { data, error } = await supabase
       .from('invitation_codes')
       .select('*')
@@ -27,12 +27,7 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
       throw new Error(`Erro ao buscar histórico de convites: ${error.message}`);
     }
     
-    if (!data) {
-      return [];
-    }
-    
-    console.log(`Encontrados ${data.length} convites para o mentor`);
-    return data;
+    return data || [];
   } catch (error: any) {
     console.error("Falha ao obter convites do mentor:", error);
     ErrorService.logError('database_error', error, { mentorId });

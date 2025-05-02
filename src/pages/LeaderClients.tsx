@@ -1,5 +1,6 @@
 
 import { useState, useEffect } from "react";
+import LeaderLayout from "@/components/leader/LeaderLayout";
 import { ClientsList } from "@/components/clients/ClientsList";
 import { ClientInviteForm } from "@/components/clients/ClientInviteForm";
 import InvitationHistory from "@/components/invitations/InvitationHistory";
@@ -32,9 +33,7 @@ export default function LeaderClients() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <h1 className="text-3xl font-bold mb-6">Gestão de Clientes</h1>
-      
+    <LeaderLayout title="Gestão de Clientes">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="w-full mb-6">
           <TabsTrigger value="clients" className="flex-1">
@@ -69,6 +68,6 @@ export default function LeaderClients() {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </LeaderLayout>
   );
 }

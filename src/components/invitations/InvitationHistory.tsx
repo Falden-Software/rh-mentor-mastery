@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { InvitationService } from "@/services/invitations";
+import { getMentorInvitations } from "@/services/invitations/getMentorInvitations";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -29,15 +30,11 @@ export default function InvitationHistory() {
     try {
       console.log("Buscando histórico de convites para o usuário:", user.id);
       
-      const data = await InvitationService.getMentorInvitations(user.id);
+      // Usando a função atualizada que evita recursão
+      const data = await getMentorInvitations(user.id);
       console.log("Dados de convites recebidos:", data);
       
-      if (Array.isArray(data)) {
-        setInvitations(data);
-      } else {
-        console.error("Formato inválido de dados retornados:", data);
-        setError("Dados de convites em formato inválido");
-      }
+      setInvitations(data || []);
     } catch (err: any) {
       console.error("Erro ao carregar histórico de convites:", err);
       setError(err.message || "Erro ao carregar histórico de convites");
@@ -146,28 +143,28 @@ export default function InvitationHistory() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invitations.map((invite) => (
-                  <TableRow key={invite.id}>
-                    <TableCell>{invite.email}</TableCell>
+                {invitations.map((invitation: any) => (
+                  <TableRow key={invitation.id}>
+                    <TableCell>{invitation.email}</TableCell>
                     <TableCell>
-                      {invite.is_used ? (
+                      {invitation.is_used ? (
                         <Badge variant="secondary" className="bg-green-100 text-green-800">Utilizado</Badge>
-                      ) : new Date(invite.expires_at) < new Date() ? (
+                      ) : new Date(invitation.expires_at) < new Date() ? (
                         <Badge variant="destructive">Expirado</Badge>
                       ) : (
                         <Badge variant="outline">Pendente</Badge>
                       )}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell">{formatDate(invite.created_at)}</TableCell>
-                    <TableCell className="hidden md:table-cell">{formatDate(invite.expires_at)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatDate(invitation.created_at)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatDate(invitation.expires_at)}</TableCell>
                     <TableCell>
                       <Button 
                         size="sm" 
                         variant="outline"
-                        disabled={invite.is_used || sendingId === invite.id || new Date(invite.expires_at) < new Date()}
-                        onClick={() => handleResend(invite.id)}
+                        disabled={invitation.is_used || sendingId === invitation.id || new Date(invitation.expires_at) < new Date()}
+                        onClick={() => handleResend(invitation.id)}
                       >
-                        {sendingId === invite.id ? (
+                        {sendingId === invitation.id ? (
                           <>
                             <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                             Enviando

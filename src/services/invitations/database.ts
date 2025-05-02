@@ -56,7 +56,7 @@ export const getMentorInvitations = async (mentorId: string) => {
   try {
     const { data, error } = await supabase
       .from('invitation_codes')
-      .select('*, mentor:profiles!invitation_codes_mentor_id_fkey(name)')
+      .select('*')
       .eq('mentor_id', mentorId)
       .order('created_at', { ascending: false });
       
