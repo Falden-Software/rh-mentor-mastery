@@ -21,6 +21,10 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<"error" | "warning" | "info">("error");
+  const [successInfo, setSuccessInfo] = useState<{
+    service?: string;
+    message?: string;
+  } | null>(null);
   
   const { user } = useAuth();
 
@@ -46,6 +50,7 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     
     setIsSubmitting(true);
     setErrorMessage(null);
+    setSuccessInfo(null);
 
     try {
       console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName}`);
@@ -62,6 +67,10 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
         toast.success("Convite enviado com sucesso!");
         setClientEmail('');
         setClientName('');
+        setSuccessInfo({
+          service: result.service || 'Email',
+          message: result.message
+        });
         onInviteSent();
       } else {
         console.error("Erro no resultado do convite:", result);
@@ -106,6 +115,25 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
             status={errorType}
           />
         )
+      )}
+
+      {successInfo && (
+        <Alert className="mb-4 bg-green-50 border-green-200">
+          <div className="flex items-center">
+            <div className="h-4 w-4 mr-2 text-green-600">✓</div>
+            <div>
+              <AlertTitle className="text-green-800">Convite enviado com sucesso</AlertTitle>
+              <AlertDescription className="text-green-700">
+                {successInfo.message || `Email enviado para ${clientEmail}`}
+                {successInfo.service && (
+                  <span className="text-xs ml-1 bg-green-100 px-2 py-1 rounded text-green-800">
+                    via {successInfo.service}
+                  </span>
+                )}
+              </AlertDescription>
+            </div>
+          </div>
+        </Alert>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -153,5 +181,3 @@ export function ClientInviteForm({ onInviteSent, onCancel }: ClientInviteFormPro
     </div>
   );
 }
-
-export default ClientInviteForm;

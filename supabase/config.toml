@@ -7,3 +7,6 @@ verify_jwt = true
 
 [functions.send-invite-email]
 verify_jwt = true
+
+[functions.send-email-sendgrid]
+verify_jwt = true

@@ -12,12 +12,17 @@ export interface InvitationCode {
 
 export interface ClientTest {
   id: string;
-  title: string;
-  description: string;
-  status: string;
-  type: string;
+  title?: string;
+  description?: string;
+  status?: string;
+  type?: string;
   created_at: string;
   client_id: string;
+  test_id: string;
+  is_completed: boolean;
+  started_at?: string;
+  completed_at?: string;
+  client_test_id?: string; // For backwards compatibility
 }
 
 export interface TestData {
@@ -27,4 +32,13 @@ export interface TestData {
   type: string;
   status: string;
   created_at: string;
+  client_test_id?: string;
+  icon?: any;
+  timeEstimate?: string;
+  category?: string;
+  dueDate?: string;
+  startedAt?: string;
+  completedAt?: string;
+  completedDate?: string;
+  test_id?: string;
 }
