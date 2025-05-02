@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase/client';
 import { AuthUser } from '@/lib/authTypes';
 import { v4 as uuidv4 } from 'uuid';
@@ -163,3 +162,21 @@ export class InvitationService {
     }
   }
 }
+
+// Example service method that uses the EmailResult type
+export const sendTestEmail = async (email: string): Promise<EmailResult> => {
+  try {
+    // Function implementation
+    return {
+      success: true,
+      id: 'test-id', // Adding id property that was previously missing
+      service: 'Test Email Service'
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: error.message,
+      errorDetails: error
+    };
+  }
+};

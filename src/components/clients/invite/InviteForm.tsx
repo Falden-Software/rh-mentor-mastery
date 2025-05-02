@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
@@ -89,7 +88,7 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
         setIsDomainError(Boolean(result.isDomainError));
         setIsApiKeyError(Boolean(result.isApiKeyError));
         setIsSmtpError(Boolean(result.isSmtpError));
-        setErrorDetails(result.errorDetails);
+        setErrorDetails(result.errorDetails || null);
         
         if (result.isDomainError) {
           setErrorType("warning");

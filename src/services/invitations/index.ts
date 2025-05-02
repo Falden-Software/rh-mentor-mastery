@@ -2,16 +2,8 @@
 import { resendInvite } from './resendInvite';
 import { getMentorInvitations } from './getMentorInvitations';
 import { sendInviteEmail } from './emailService';
-
-interface InvitationResult {
-  success: boolean;
-  message?: string;
-  error?: string;
-  service?: string;
-  isApiKeyError?: boolean;
-  isDomainError?: boolean;
-  isSmtpError?: boolean;
-}
+import { supabase } from '@/lib/supabase/client';
+import { InvitationResult, EmailResult } from './types';
 
 interface InvitationData {
   email: string;
@@ -80,5 +72,5 @@ export const InvitationService = {
 };
 
 // Re-export types and functions
-export type { InvitationResult };
+export type { InvitationResult, EmailResult };
 export { sendInviteEmail, getMentorInvitations, resendInvite };
