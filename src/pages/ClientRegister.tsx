@@ -1,5 +1,5 @@
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
@@ -7,11 +7,14 @@ import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { ClientRegisterForm, ClientRegistrationFormData } from "@/components/auth/client/ClientRegisterForm";
 import { useInviteVerification } from "@/hooks/useInviteVerification";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export default function ClientRegister() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
   const { register } = useAuth();
   
   // Buscar o mentor_id e email do URL search params
@@ -25,8 +28,27 @@ export default function ClientRegister() {
 
   const handleSubmit = async (values: ClientRegistrationFormData) => {
     setIsLoading(true);
+    setFormError(null);
     
     try {
+      if (!values.name?.trim()) {
+        setFormError("O nome é obrigatório");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!values.email?.trim()) {
+        setFormError("O email é obrigatório");
+        setIsLoading(false);
+        return;
+      }
+
+      if (!values.password?.trim() || values.password.length < 6) {
+        setFormError("A senha deve ter no mínimo 6 caracteres");
+        setIsLoading(false);
+        return;
+      }
+      
       // Tenta encontrar um convite não utilizado para este email
       const { data: invitationData } = await supabase
         .from('invitation_codes')
@@ -96,6 +118,8 @@ export default function ClientRegister() {
       navigate("/client/login");
     } catch (error) {
       console.error("Erro no registro:", error);
+      setFormError(error instanceof Error ? error.message : "Ocorreu um erro durante o registro.");
+      
       toast({
         variant: "destructive",
         title: "Erro no registro",
@@ -117,6 +141,14 @@ export default function ClientRegister() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {formError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Erro no registro</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+            
             <ClientRegisterForm 
               onSubmit={handleSubmit} 
               initialEmail={clientEmail || ""} 

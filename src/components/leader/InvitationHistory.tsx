@@ -85,7 +85,7 @@ const InvitationHistory = () => {
     }
   };
 
-  const getStatusBadge = (invite: InvitationCode) => {
+  const getStatusBadge = (invite: any) => {
     if (invite.is_used) {
       return (
         <Badge className="bg-green-100 text-green-800 hover:bg-green-200 flex items-center gap-1">
@@ -110,7 +110,7 @@ const InvitationHistory = () => {
     );
   };
   
-  const isInviteExpired = (invite: InvitationCode): boolean => {
+  const isInviteExpired = (invite: any): boolean => {
     const expiresAt = new Date(invite.expires_at);
     return expiresAt < new Date();
   };
@@ -137,7 +137,7 @@ const InvitationHistory = () => {
         </TableHeader>
         <TableBody>
           {invitations && invitations.length > 0 ? (
-            invitations.map((invitation: InvitationCode) => (
+            invitations.map((invitation: any) => (
               <TableRow key={invitation.id}>
                 <TableCell>
                   {invitation.email}
@@ -155,7 +155,7 @@ const InvitationHistory = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => resendMutation.mutate(invitation.id)}
-                    disabled={sendingEmails[invitation.id] || invitation.is_used}
+                    disabled={sendingEmails[invitation.id] || invitation.is_used || isInviteExpired(invitation)}
                     className={invitation.is_used ? "opacity-50 cursor-not-allowed" : ""}
                   >
                     {sendingEmails[invitation.id] ? (

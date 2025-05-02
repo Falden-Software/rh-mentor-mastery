@@ -14,7 +14,7 @@ export const sendInviteEmail = async (
       ? window.location.origin 
       : 'https://rhmaster.space';
       
-    const registerUrl = `${baseUrl}/register?type=client&email=${encodeURIComponent(email)}`;
+    const registerUrl = `${baseUrl}/client/register?email=${encodeURIComponent(email)}`;
     
     const { data, error } = await supabase.functions.invoke<EmailResult>('send-invite-email', {
       body: {
