@@ -16,7 +16,7 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
     // Obter dados do convite
     const { data: invite, error: fetchError } = await supabase
       .from('invitation_codes')
-      .select('*, profiles:mentor_id(*)')
+      .select('*')
       .eq('id', inviteId)
       .eq('mentor_id', mentorId)
       .single();
@@ -55,8 +55,19 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
       }
     }
     
+    // Buscar o nome do mentor separadamente
+    const { data: mentorData, error: mentorError } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', mentorId)
+      .single();
+      
+    if (mentorError) {
+      console.error("Erro ao buscar dados do mentor:", mentorError);
+    }
+    
     // Enviar email
-    const mentorName = invite.profiles?.name || 'Seu Mentor';
+    const mentorName = mentorData?.name || 'Seu Mentor';
     const result = await sendInviteEmail(
       invite.email,
       undefined, // Cliente pode não ter um nome registrado ainda

@@ -139,7 +139,7 @@ export default function InvitationHistory() {
                     <TableCell>{invite.email}</TableCell>
                     <TableCell>
                       {invite.is_used ? (
-                        <Badge variant="success">Utilizado</Badge>
+                        <Badge className="bg-green-500 text-white">Utilizado</Badge>
                       ) : new Date(invite.expires_at) < new Date() ? (
                         <Badge variant="destructive">Expirado</Badge>
                       ) : (
