@@ -14,7 +14,7 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
   try {
     console.log("Buscando convites para mentor:", mentorId);
     
-    // Abordagem sem junção para evitar recursão de RLS
+    // Approach without join to avoid RLS recursion
     const { data, error } = await supabase
       .from('invitation_codes')
       .select('*')
@@ -29,7 +29,6 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
     
     console.log(`Encontrados ${data?.length || 0} convites para o mentor`);
     
-    // Se não houver erro mas data for null, retornar array vazio
     return data || [];
   } catch (error) {
     console.error("Falha ao obter convites do mentor:", error);

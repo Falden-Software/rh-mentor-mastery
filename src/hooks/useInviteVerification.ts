@@ -25,7 +25,32 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
       try {
         console.log("Verificando convite com:", { token, email });
         
-        // Se temos um email, verificamos convites válidos para esse email
+        // Se temos um token/código, verificamos ele primeiro
+        if (token) {
+          console.log("Verificando token de convite:", token);
+          
+          const { data: inviteData, error: inviteError } = await supabase
+            .from('invitation_codes')
+            .select('*')
+            .eq('code', token)
+            .eq('is_used', false)
+            .gt('expires_at', new Date().toISOString())
+            .limit(1);
+            
+          if (inviteError) {
+            console.error("Erro ao verificar token de convite:", inviteError);
+            setError("Não foi possível verificar o token de convite");
+          } else if (inviteData && inviteData.length > 0) {
+            console.log("Convite válido encontrado pelo token:", inviteData[0]);
+            setIsVerified(true);
+            setMentorId(inviteData[0].mentor_id);
+            return;
+          } else {
+            console.log("Nenhum convite válido encontrado para o token:", token);
+          }
+        }
+        
+        // Se temos um email ou se a verificação por token falhou, tentamos pelo email
         if (email) {
           const { data: inviteData, error: inviteError } = await supabase
             .from('invitation_codes')
@@ -48,39 +73,9 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
             console.log("Nenhum convite válido encontrado para o email:", email);
           }
         }
-
-        // Se temos um token/código, verificamos ele
-        if (token) {
-          console.log("Verificando token de convite:", token);
-          
-          const { data: inviteData, error: inviteError } = await supabase
-            .from('invitation_codes')
-            .select('*')
-            .eq('code', token)
-            .eq('is_used', false)
-            .gt('expires_at', new Date().toISOString())
-            .limit(1);
-            
-          if (inviteError) {
-            console.error("Erro ao verificar token de convite:", inviteError);
-            setError("Não foi possível verificar o token de convite");
-          } else if (inviteData && inviteData.length > 0) {
-            console.log("Convite válido encontrado pelo token:", inviteData[0]);
-            setIsVerified(true);
-            setMentorId(inviteData[0].mentor_id);
-            // Se temos um email do parâmetro e ele não corresponde ao email do convite,
-            // vamos usar o email do convite
-            if (email && email !== inviteData[0].email) {
-              console.log("Email do parâmetro diferente do convite, usando o email do convite:", inviteData[0].email);
-            }
-          } else {
-            console.log("Nenhum convite válido encontrado para o token:", token);
-            setError("O token de convite fornecido é inválido ou expirou");
-          }
-        }
         
-        if (!isVerified && !error) {
-          setError("Não foi possível verificar o convite");
+        if (!isVerified) {
+          setError("Não foi possível encontrar um convite válido");
         }
       } catch (error: any) {
         console.error("Erro ao processar convite:", error);

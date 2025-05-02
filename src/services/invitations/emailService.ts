@@ -31,7 +31,9 @@ export const sendInviteEmail = async (
       email,
       clientName: clientName || email.split('@')[0], // Usar parte do email como nome se não fornecido
       mentorName: mentorName || "Seu Mentor",
-      inviteCode: inviteCode || undefined
+      inviteCode: inviteCode || undefined,
+      token: inviteCode, // Adicionando token como parâmetro para a URL de registro
+      registrationUrl: `${window.location.origin}/client/register?token=${inviteCode}&email=${encodeURIComponent(email)}`
     };
 
     // Chamar a função edge para enviar o email

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
@@ -14,15 +14,15 @@ import { Button } from "@/components/ui/button";
 export default function ClientRegister() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const { register } = useAuth();
   
-  // Buscar o mentor_id e email do URL search params
-  const searchParams = new URLSearchParams(window.location.search);
+  // Buscar parâmetros da URL
   const mentorId = searchParams.get("mentor_id");
   const clientEmail = searchParams.get("email");
-  const token = searchParams.get("token"); // Token de convite do Supabase
+  const token = searchParams.get("token"); // Token de convite
   
   // Verificar o token de convite
   const { isVerifying, isVerified, error: verificationError, mentorId: verifiedMentorId } = useInviteVerification({ 
@@ -106,20 +106,37 @@ export default function ClientRegister() {
       );
       
       if (result !== null) {
-        // Marcar convites como utilizados
-        const { error: updateError } = await supabase
-          .from('invitation_codes')
-          .update({ 
-            is_used: true,
-            used_by: result.id
-          })
-          .eq('email', values.email)
-          .eq('is_used', false);
-        
-        if (updateError) {
-          console.error("Erro ao atualizar códigos de convite:", updateError);
+        // Marcar convites como utilizados - usando código do convite se disponível
+        if (token) {
+          const { error: updateError } = await supabase
+            .from('invitation_codes')
+            .update({ 
+              is_used: true,
+              used_by: result.id
+            })
+            .eq('code', token);
+            
+          if (updateError) {
+            console.error("Erro ao atualizar código de convite pelo token:", updateError);
+          } else {
+            console.log("Convite marcado como utilizado pelo token");
+          }
         } else {
-          console.log("Convite(s) marcado(s) como utilizado(s)");
+          // Fallback para atualizar por email
+          const { error: updateError } = await supabase
+            .from('invitation_codes')
+            .update({ 
+              is_used: true,
+              used_by: result.id
+            })
+            .eq('email', values.email)
+            .eq('is_used', false);
+          
+          if (updateError) {
+            console.error("Erro ao atualizar códigos de convite pelo email:", updateError);
+          } else {
+            console.log("Convite(s) marcado(s) como utilizado(s) pelo email");
+          }
         }
         
         // Vincular cliente ao mentor

@@ -60,6 +60,8 @@ export default function InvitationHistory() {
           title: "Convite reenviado",
           description: "O convite foi reenviado com sucesso."
         });
+        // Atualizar lista de convites após reenvio
+        await fetchInvitations();
       } else {
         throw new Error(result.error || "Não foi possível reenviar o convite.");
       }
@@ -144,7 +146,7 @@ export default function InvitationHistory() {
                     <TableCell>{invite.email}</TableCell>
                     <TableCell>
                       {invite.is_used ? (
-                        <Badge className="bg-green-500 text-white">Utilizado</Badge>
+                        <Badge variant="secondary" className="bg-green-100 text-green-800">Utilizado</Badge>
                       ) : new Date(invite.expires_at) < new Date() ? (
                         <Badge variant="destructive">Expirado</Badge>
                       ) : (

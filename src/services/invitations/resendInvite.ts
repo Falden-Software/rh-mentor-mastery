@@ -82,6 +82,13 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
     
     console.log("Resultado do envio de email:", result);
     
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error || "Erro ao enviar email"
+      };
+    }
+    
     return {
       success: true,
       message: `Convite reenviado com sucesso para ${invite.email}`
