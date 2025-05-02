@@ -9,7 +9,7 @@ export const sendInviteEmail = async (
   mentorName?: string
 ): Promise<EmailResult> => {
   try {
-    // Obter a URL base do ambiente atual
+    // Get base URL from current environment
     const baseUrl = typeof window !== 'undefined' 
       ? window.location.origin 
       : 'https://rhmaster.space';
@@ -54,16 +54,16 @@ export const sendInviteEmail = async (
     });
     
     // Extract error message for classification
-    const errorMsg = error?.message || '';
+    const errorMsg = error instanceof Error ? error.message : String(error);
     
     // Return a properly typed error response
     return {
       success: false,
       error: 'Erro interno ao enviar email via Supabase',
       errorDetails: error,
-      isSmtpError: Boolean(errorMsg.includes('SMTP') || errorMsg.includes('email')),
-      isDomainError: Boolean(errorMsg.includes('domain') || errorMsg.includes('domínio')),
-      isApiKeyError: Boolean(errorMsg.includes('API key') || errorMsg.includes('chave API'))
+      isSmtpError: errorMsg.includes('SMTP') || errorMsg.includes('email'),
+      isDomainError: errorMsg.includes('domain') || errorMsg.includes('domínio'),
+      isApiKeyError: errorMsg.includes('API key') || errorMsg.includes('chave API')
     };
   }
 };
