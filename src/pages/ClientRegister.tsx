@@ -1,34 +1,12 @@
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/context/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
-import { AuthUser } from "@/lib/auth";
-
-const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Nome deve ter pelo menos 2 caracteres.",
-  }),
-  email: z.string().email({
-    message: "Email inválido.",
-  }),
-  password: z.string().min(6, {
-    message: "Senha deve ter pelo menos 6 caracteres.",
-  }),
-  phone: z.string().optional(),
-  position: z.string().optional(),
-  bio: z.string().optional()
-});
+import { ClientRegisterForm, ClientRegistrationFormData } from "@/components/auth/client/ClientRegisterForm";
+import { useInviteVerification } from "@/hooks/useInviteVerification";
 
 export default function ClientRegister() {
   const { toast } = useToast();
@@ -36,62 +14,16 @@ export default function ClientRegister() {
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
   
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      password: "",
-      phone: "",
-      position: "",
-      bio: ""
-    },
-  });
-
   // Buscar o mentor_id e email do URL search params
   const searchParams = new URLSearchParams(window.location.search);
   const mentorId = searchParams.get("mentor_id");
   const clientEmail = searchParams.get("email");
   const token = searchParams.get("token"); // Token de convite do Supabase
+  
+  // Verificar o token de convite
+  const { isVerifying } = useInviteVerification({ token });
 
-  // Preencher o email do formulário se disponível no URL
-  useEffect(() => {
-    if (clientEmail) {
-      form.setValue("email", clientEmail);
-    }
-    
-    // Se temos um token do Supabase, vamos verificá-lo
-    if (token) {
-      verifyInviteToken(token);
-    }
-  }, [clientEmail, token, form]);
-
-  // Verificar o token de convite do Supabase
-  const verifyInviteToken = async (token: string) => {
-    try {
-      // Verificar se o token é válido usando a API do Supabase
-      const { data, error } = await supabase.auth.verifyOtp({
-        token_hash: token,
-        type: 'invite'
-      });
-
-      if (error) {
-        console.error("Erro ao verificar token de convite:", error);
-        toast({
-          variant: "destructive",
-          title: "Convite inválido",
-          description: "O link de convite é inválido ou expirou.",
-        });
-      } else {
-        console.log("Token de convite válido:", data);
-        // Podemos extrair metadados do convite se necessário
-      }
-    } catch (error) {
-      console.error("Erro ao processar token:", error);
-    }
-  };
-
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
+  const handleSubmit = async (values: ClientRegistrationFormData) => {
     setIsLoading(true);
     
     try {
@@ -119,7 +51,7 @@ export default function ClientRegister() {
         return;
       }
       
-      const result: AuthUser | null = await register(
+      const result = await register(
         values.email, 
         values.password, 
         values.name, 
@@ -185,105 +117,11 @@ export default function ClientRegister() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Nome</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Seu nome completo" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input placeholder="seu@email.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Senha</FormLabel>
-                      <FormControl>
-                        <Input type="password" placeholder="******" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Telefone</FormLabel>
-                      <FormControl>
-                        <Input placeholder="(XX) XXXXX-XXXX" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                      <FormDescription>Opcional</FormDescription>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="position"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Cargo</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Seu cargo atual" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                      <FormDescription>Opcional</FormDescription>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="bio"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Biografia</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Conte um pouco sobre você" {...field} rows={3} />
-                      </FormControl>
-                      <FormMessage />
-                      <FormDescription>Opcional</FormDescription>
-                    </FormItem>
-                  )}
-                />
-                
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Registrando...
-                    </>
-                  ) : (
-                    "Registrar"
-                  )}
-                </Button>
-              </form>
-            </Form>
+            <ClientRegisterForm 
+              onSubmit={handleSubmit} 
+              initialEmail={clientEmail || ""} 
+              isLoading={isLoading || isVerifying} 
+            />
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <div className="text-center text-sm text-muted-foreground">
