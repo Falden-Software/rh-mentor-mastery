@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { InvitationResult } from "./types";
 import { validateInviteData } from "./validation";
@@ -13,8 +12,18 @@ export async function createInviteDirect(
   mentorId: string
 ): Promise<InvitationResult> {
   try {
-    // Validate input
-    const validateResult = validateInviteData({ email, name, mentor: { id: mentorId } });
+    // Validate input - passando objeto completo conforme esperado pela função
+    const validateResult = validateInviteData({ 
+      email, 
+      name, 
+      mentor: { 
+        id: mentorId,
+        email: null,
+        name: 'Mentor',
+        role: 'mentor'
+      } 
+    });
+    
     if (!validateResult) {
       return {
         success: false,
@@ -51,7 +60,7 @@ export async function createInviteDirect(
     }
 
     // Generate the client registration URL with mentor_id and email params
-    const baseUrl = window.location.origin;
+    const baseUrl = "https://rh-mentor-mastery.lovable.app";
     const registerUrl = `${baseUrl}/client/register?mentor_id=${mentorId}&email=${encodeURIComponent(email)}`;
     
     // Use Supabase Auth invite user API
