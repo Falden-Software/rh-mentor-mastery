@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { Brain, LineChart } from "lucide-react";
 import { TestData } from "@/types/models";
 import AnimalProfileTestCard from "@/components/tests/AnimalProfileTestCard";
 import EgogramaTestCard from "@/components/tests/EgogramaTestCard";
@@ -51,8 +50,7 @@ export const TestTabContent = ({
             is_completed: !isPending,
             started_at: animalTest.startedAt,
             completed_at: animalTest.completedAt,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: animalTest.created_at
           }}
           isStarting={isStarting === animalTest.client_test_id}
           onStartTest={onStartAnimalTest}
@@ -68,8 +66,7 @@ export const TestTabContent = ({
             is_completed: !isPending,
             started_at: egogramTest.startedAt,
             completed_at: egogramTest.completedAt,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: egogramTest.created_at
           }}
           isStarting={isStarting === egogramTest.client_test_id}
           onStartTest={onStartEgogramTest}
@@ -85,8 +82,7 @@ export const TestTabContent = ({
             is_completed: !isPending,
             started_at: proactivityTest.startedAt,
             completed_at: proactivityTest.completedAt,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+            created_at: proactivityTest.created_at
           }}
           isStarting={isStarting === proactivityTest.client_test_id}
           onStartTest={onStartProactivityTest}

@@ -1,4 +1,7 @@
 
+import { ForwardRefExoticComponent, RefAttributes } from "react";
+import { LucideProps } from "lucide-react";
+
 export interface InvitationCode {
   id: string;
   code: string;
@@ -33,7 +36,7 @@ export interface TestData {
   status: string;
   created_at: string;
   client_test_id?: string;
-  icon?: any;
+  icon?: ForwardRefExoticComponent<Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>>;
   timeEstimate?: string;
   category?: string;
   dueDate?: string;
