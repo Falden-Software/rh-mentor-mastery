@@ -6,7 +6,24 @@ import { ErrorService } from '../errorService';
 
 export const resendInvite = async (inviteId: string, mentorId: string): Promise<InvitationResult> => {
   try {
-    // Fetch invitation details directly to avoid RLS recursion
+    // Try to use an RPC function first to avoid recursion
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc(
+        'resend_invitation',
+        { p_invite_id: inviteId, p_mentor_id: mentorId }
+      );
+      
+      if (!rpcError && rpcData) {
+        console.log("Convite atualizado via RPC:", rpcData);
+        // RPC successful, proceed with email
+      } else {
+        console.log("Fallback para query direta devido a:", rpcError?.message);
+      }
+    } catch (rpcException) {
+      console.error("Exceção em RPC, usando fallback:", rpcException);
+    }
+    
+    // Fetch invitation details directly (fallback if RPC fails)
     const { data: invite, error: fetchError } = await supabase
       .from('invitation_codes')
       .select('*')

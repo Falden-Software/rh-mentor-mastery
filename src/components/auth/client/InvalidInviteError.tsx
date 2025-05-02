@@ -41,6 +41,13 @@ export const InvalidInviteError: React.FC<InvalidInviteErrorProps> = ({ error })
             >
               Ir para login
             </Button>
+            <Button 
+              variant="link" 
+              className="w-full" 
+              onClick={() => navigate('/')}
+            >
+              Voltar para página inicial
+            </Button>
           </CardFooter>
         </Card>
       </div>
