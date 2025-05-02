@@ -12,9 +12,9 @@ import { InvitationCode } from '@/types/models';
  */
 export const getMentorInvitations = async (mentorId: string): Promise<InvitationCode[]> => {
   try {
-    console.log("Fetching invitations for mentor:", mentorId);
+    console.log("Buscando convites para mentor:", mentorId);
     
-    // Use a direct query instead of a join that might trigger RLS recursion
+    // Abordagem sem junção para evitar recursão de RLS
     const { data, error } = await supabase
       .from('invitation_codes')
       .select('*')
@@ -22,19 +22,21 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
       .order('created_at', { ascending: false });
       
     if (error) {
-      console.error("Error fetching mentor invitations:", error);
+      console.error("Erro ao buscar convites do mentor:", error);
       ErrorService.logError('database_error', error, { mentorId });
-      throw new Error(`Error fetching invitation history: ${error.message}`);
+      throw new Error(`Erro ao buscar histórico de convites: ${error.message}`);
     }
     
-    console.log(`Found ${data?.length || 0} invitations for mentor`);
+    console.log(`Encontrados ${data?.length || 0} convites para o mentor`);
+    
+    // Se não houver erro mas data for null, retornar array vazio
     return data || [];
   } catch (error) {
-    console.error("Failed to get mentor invitations:", error);
+    console.error("Falha ao obter convites do mentor:", error);
     ErrorService.logError('database_error', error, { mentorId });
     if (error instanceof Error) {
       throw error;
     }
-    throw new Error('Unknown error fetching invitations');
+    throw new Error('Erro desconhecido ao buscar convites');
   }
 };

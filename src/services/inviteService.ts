@@ -19,10 +19,16 @@ export const sendInviteEmail = async (inviteId: string) => {
 
 // Função auxiliar para obter o mentor_id de um convite
 async function getMentorIdFromInvite(inviteId: string) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('invitation_codes')
     .select('mentor_id')
     .eq('id', inviteId)
-    .single();
+    .maybeSingle();
+    
+  if (error) {
+    console.error("Erro ao buscar mentor_id do convite:", error);
+    return null;
+  }
+  
   return data?.mentor_id;
 }

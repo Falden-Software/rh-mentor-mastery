@@ -24,7 +24,10 @@ export default function ClientRegister() {
   const token = searchParams.get("token"); // Token de convite do Supabase
   
   // Verificar o token de convite
-  const { isVerifying } = useInviteVerification({ token });
+  const { isVerifying, isVerified, mentorId: verifiedMentorId } = useInviteVerification({ token, email: clientEmail });
+  
+  // Usar o mentorId verificado se disponível, senão usar o da URL
+  const effectiveMentorId = verifiedMentorId || mentorId;
 
   const handleSubmit = async (values: ClientRegistrationFormData) => {
     setIsLoading(true);
@@ -49,30 +52,44 @@ export default function ClientRegister() {
         return;
       }
       
-      // Tenta encontrar um convite não utilizado para este email
-      const { data: invitationData } = await supabase
-        .from('invitation_codes')
-        .select('mentor_id')
-        .eq('email', values.email)
-        .eq('is_used', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      // Determina o mentor_id para vincular ao cliente
-      const mentorIdToUse = mentorId || (invitationData?.mentor_id as string | null);
+      // Verificar primeiro se temos um mentorId para usar
+      let mentorIdToUse = effectiveMentorId;
+      
+      // Se não temos ainda, tenta encontrar um convite não utilizado para este email
+      if (!mentorIdToUse) {
+        console.log("Buscando mentor_id de convites para o email:", values.email);
+        const { data: invitationData, error: inviteError } = await supabase
+          .from('invitation_codes')
+          .select('mentor_id')
+          .eq('email', values.email)
+          .eq('is_used', false)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .maybeSingle();
+          
+        if (inviteError) {
+          console.error("Erro ao buscar convites:", inviteError);
+        } else if (invitationData) {
+          mentorIdToUse = invitationData.mentor_id;
+          console.log("Encontrado mentor_id de convite:", mentorIdToUse);
+        }
+      } else {
+        console.log("Usando mentor_id já identificado:", mentorIdToUse);
+      }
 
       if (!mentorIdToUse) {
+        console.error("Não foi encontrado mentor_id válido para associação");
         toast({
           variant: "destructive",
           title: "Erro no registro",
           description: "Não foi possível encontrar um mentor válido para associar à sua conta.",
         });
+        setFormError("Não foi possível encontrar um mentor válido para associar à sua conta.");
         setIsLoading(false);
         return;
       }
       
+      console.log("Registrando cliente com mentor_id:", mentorIdToUse);
       const result = await register(
         values.email, 
         values.password, 
@@ -107,6 +124,8 @@ export default function ClientRegister() {
           
         if (profileError) {
           console.error("Erro ao vincular cliente ao mentor:", profileError);
+        } else {
+          console.log("Cliente vinculado com sucesso ao mentor:", mentorIdToUse);
         }
       }
       
