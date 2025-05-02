@@ -19,13 +19,20 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
       .select('*')
       .eq('id', inviteId)
       .eq('mentor_id', mentorId)
-      .single();
+      .maybeSingle();
       
-    if (fetchError || !invite) {
+    if (fetchError) {
       console.error("Erro ao obter dados do convite:", fetchError);
       return {
         success: false,
         error: fetchError?.message || "Convite não encontrado"
+      };
+    }
+    
+    if (!invite) {
+      return {
+        success: false,
+        error: "Convite não encontrado"
       };
     }
     
@@ -37,7 +44,8 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
     }
     
     // Se o convite estiver expirado, atualizamos a data de expiração
-    if (new Date(invite.expires_at) < new Date()) {
+    const now = new Date();
+    if (new Date(invite.expires_at) < now) {
       // Atualizar data de expiração
       const newExpiryDate = new Date();
       newExpiryDate.setDate(newExpiryDate.getDate() + 7);
@@ -64,15 +72,11 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
       .from('profiles')
       .select('name')
       .eq('id', mentorId)
-      .single();
+      .maybeSingle();
       
-    if (mentorError) {
-      console.error("Erro ao buscar dados do mentor:", mentorError);
-      // Continuamos mesmo com esse erro, apenas usando um nome padrão
-    }
+    const mentorName = mentorData?.name || 'Seu Mentor';
     
     // Enviar email
-    const mentorName = mentorData?.name || 'Seu Mentor';
     const result = await sendInviteEmail(
       invite.email,
       undefined, // Cliente pode não ter um nome registrado ainda

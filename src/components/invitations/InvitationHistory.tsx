@@ -8,8 +8,9 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
-import { Loader2, Send, RefreshCw } from "lucide-react";
+import { Loader2, Send, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 
 export default function InvitationHistory() {
   const [invitations, setInvitations] = useState<any[]>([]);
@@ -27,12 +28,19 @@ export default function InvitationHistory() {
     
     try {
       console.log("Buscando histórico de convites para o usuário:", user.id);
+      
       const data = await InvitationService.getMentorInvitations(user.id);
       console.log("Dados de convites recebidos:", data);
-      setInvitations(data);
+      
+      if (Array.isArray(data)) {
+        setInvitations(data);
+      } else {
+        console.error("Formato inválido de dados retornados:", data);
+        setError("Dados de convites em formato inválido");
+      }
     } catch (err: any) {
       console.error("Erro ao carregar histórico de convites:", err);
-      setError("Erro ao carregar histórico de convites");
+      setError(err.message || "Erro ao carregar histórico de convites");
       toast({
         variant: "destructive",
         title: "Erro",
@@ -44,7 +52,9 @@ export default function InvitationHistory() {
   };
 
   useEffect(() => {
-    fetchInvitations();
+    if (user?.id) {
+      fetchInvitations();
+    }
   }, [user?.id]);
 
   const handleResend = async (inviteId: string) => {
@@ -81,31 +91,10 @@ export default function InvitationHistory() {
     if (!dateString) return "N/A";
     try {
       return format(new Date(dateString), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-    } catch {
+    } catch (error) {
       return "Data inválida";
     }
   };
-
-  if (error) {
-    return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Histórico de Convites</CardTitle>
-            <Button variant="outline" size="sm" onClick={fetchInvitations}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Tentar Novamente
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8 text-red-500">
-            {error}. Por favor, tente novamente.
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <Card>
@@ -119,12 +108,28 @@ export default function InvitationHistory() {
         </div>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Erro ao carregar histórico</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={fetchInvitations} 
+              className="mt-2"
+            >
+              Tentar Novamente
+            </Button>
+          </Alert>
+        )}
+        
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <span className="ml-2">Carregando...</span>
           </div>
-        ) : invitations.length === 0 ? (
+        ) : invitations.length === 0 && !error ? (
           <div className="text-center py-8 text-muted-foreground">
             Nenhum convite enviado ainda.
           </div>
@@ -135,8 +140,8 @@ export default function InvitationHistory() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Data de Envio</TableHead>
-                  <TableHead>Expira em</TableHead>
+                  <TableHead className="hidden md:table-cell">Data de Envio</TableHead>
+                  <TableHead className="hidden md:table-cell">Expira em</TableHead>
                   <TableHead>Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -153,8 +158,8 @@ export default function InvitationHistory() {
                         <Badge variant="outline">Pendente</Badge>
                       )}
                     </TableCell>
-                    <TableCell>{formatDate(invite.created_at)}</TableCell>
-                    <TableCell>{formatDate(invite.expires_at)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatDate(invite.created_at)}</TableCell>
+                    <TableCell className="hidden md:table-cell">{formatDate(invite.expires_at)}</TableCell>
                     <TableCell>
                       <Button 
                         size="sm" 

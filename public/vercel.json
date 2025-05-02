@@ -6,5 +6,8 @@
       "destination": "/register?type=client",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
   ]
 }

@@ -27,15 +27,15 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
       throw new Error(`Erro ao buscar histórico de convites: ${error.message}`);
     }
     
-    console.log(`Encontrados ${data?.length || 0} convites para o mentor`);
+    if (!data) {
+      return [];
+    }
     
-    return data || [];
-  } catch (error) {
+    console.log(`Encontrados ${data.length} convites para o mentor`);
+    return data;
+  } catch (error: any) {
     console.error("Falha ao obter convites do mentor:", error);
     ErrorService.logError('database_error', error, { mentorId });
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error('Erro desconhecido ao buscar convites');
+    throw new Error(error.message || 'Erro ao buscar convites');
   }
 };

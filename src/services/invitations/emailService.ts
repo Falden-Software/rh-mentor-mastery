@@ -4,62 +4,69 @@ import { InvitationResult } from "./types";
 
 /**
  * Envia um email de convite para um cliente
- * @param email Email do cliente
+ * @param email Email do cliente a ser convidado
  * @param clientName Nome do cliente (opcional)
- * @param mentorName Nome do mentor
- * @param inviteCode Código do convite (opcional)
+ * @param mentorName Nome do mentor que está enviando o convite
+ * @param inviteCode Código do convite
  * @returns Resultado da operação
  */
 export const sendInviteEmail = async (
   email: string,
-  clientName?: string,
-  mentorName?: string,
-  inviteCode?: string
+  clientName?: string | null,
+  mentorName?: string | null,
+  inviteCode?: string | null
 ): Promise<InvitationResult> => {
   try {
-    console.log(`Enviando email para: ${email}`, { clientName, mentorName, inviteCode });
-    
     if (!email) {
-      return {
-        success: false,
-        error: "Email do cliente é obrigatório"
-      };
+      return { success: false, error: "Email do destinatário não fornecido" };
     }
 
-    // Preparar os dados para a função de edge
-    const payload = {
-      email,
-      clientName: clientName || email.split('@')[0], // Usar parte do email como nome se não fornecido
-      mentorName: mentorName || "Seu Mentor",
-      inviteCode: inviteCode || undefined,
-      token: inviteCode, // Adicionando token como parâmetro para a URL de registro
-      registrationUrl: `${window.location.origin}/client/register?token=${inviteCode}&email=${encodeURIComponent(email)}`
-    };
+    const name = clientName || email.split('@')[0];
+    const mentor = mentorName || "Seu mentor";
+    
+    // Base URL - verificar ambiente
+    const baseUrl = window.location.origin;
+    const registrationUrl = inviteCode 
+      ? `${baseUrl}/client/register?token=${inviteCode}&email=${encodeURIComponent(email)}`
+      : `${baseUrl}/client/register?email=${encodeURIComponent(email)}`;
+    
+    console.log(`Enviando email para ${email} com URL de registro: ${registrationUrl}`);
 
-    // Chamar a função edge para enviar o email
     const { data, error } = await supabase.functions.invoke('send-invite-email', {
-      body: payload
+      body: {
+        to: email,
+        name: name,
+        mentor: mentor,
+        registrationUrl: registrationUrl
+      }
     });
-    
-    if (error || !data?.success) {
-      console.error("Erro ao enviar email:", error || data?.error);
+
+    if (error) {
+      console.error("Erro ao enviar email de convite:", error);
       return {
         success: false,
-        error: data?.error || error?.message || "Erro desconhecido ao enviar email"
+        error: `Erro ao enviar email: ${error.message}`
       };
     }
-    
-    console.log("Email enviado com sucesso:", data);
+
+    if (!data || !data.success) {
+      const errorMessage = data?.error || "Erro desconhecido ao enviar email";
+      console.error("Falha no serviço de email:", errorMessage);
+      return {
+        success: false,
+        error: errorMessage
+      };
+    }
+
     return {
       success: true,
-      message: "Email enviado com sucesso"
+      message: `Email de convite enviado com sucesso para ${email}`
     };
-    
   } catch (error: any) {
-    console.error("Erro ao enviar email:", error);
+    console.error("Exceção ao enviar email:", error);
     return {
       success: false,
-      error: error.message || "Erro desconhecido ao enviar email"
+      error: error.message || "Erro desconhecido ao processar o envio"
     };
   }
 };

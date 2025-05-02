@@ -39,15 +39,15 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
             .eq('code', token)
             .eq('is_used', false)
             .gt('expires_at', new Date().toISOString())
-            .limit(1);
+            .maybeSingle();
             
           if (inviteError) {
             console.error("Erro ao verificar token de convite:", inviteError);
             setError("Não foi possível verificar o token de convite");
-          } else if (inviteData && inviteData.length > 0) {
-            console.log("Convite válido encontrado pelo token:", inviteData[0]);
+          } else if (inviteData) {
+            console.log("Convite válido encontrado pelo token:", inviteData);
             setIsVerified(true);
-            setMentorId(inviteData[0].mentor_id);
+            setMentorId(inviteData.mentor_id);
             setIsVerifying(false);
             return;
           } else {
@@ -66,15 +66,15 @@ export function useInviteVerification({ token, email }: UseInviteVerificationPro
             .eq('is_used', false)
             .gt('expires_at', new Date().toISOString())
             .order('created_at', { ascending: false })
-            .limit(1);
+            .maybeSingle();
           
           if (inviteError) {
             console.error("Erro ao verificar convite por email:", inviteError);
             setError("Não foi possível verificar o convite por email");
-          } else if (inviteData && inviteData.length > 0) {
-            console.log("Encontrado convite válido pelo email:", inviteData[0]);
+          } else if (inviteData) {
+            console.log("Encontrado convite válido pelo email:", inviteData);
             setIsVerified(true);
-            setMentorId(inviteData[0].mentor_id);
+            setMentorId(inviteData.mentor_id);
             setIsVerifying(false);
             return;
           } else {

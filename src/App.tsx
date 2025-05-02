@@ -32,7 +32,7 @@ import TestResultPage from "./pages/TestResultPage";
 
 const queryClient = new QueryClient();
 
-const App = () => {
+function App() {
   return (
     <React.StrictMode>
       <BrowserRouter>
@@ -42,8 +42,10 @@ const App = () => {
               <Routes>
                 <Route path="/" element={<Index />} />
                 <Route path="/client/login" element={<ClientLogin />} />
-                <Route path="/register" element={<Register />} />
+                
+                {/* Client routes */}
                 <Route path="/client/register" element={<ClientRegister />} />
+                <Route path="/register" element={<Register />} />
                 
                 <Route 
                   path="/leader" 
@@ -193,6 +195,6 @@ const App = () => {
       </BrowserRouter>
     </React.StrictMode>
   );
-};
+}
 
 export default App;
