@@ -48,17 +48,48 @@ export default function ClientRegister() {
     },
   });
 
-  // Buscar o mentor_id do URL search params se disponível
+  // Buscar o mentor_id e email do URL search params
   const searchParams = new URLSearchParams(window.location.search);
   const mentorId = searchParams.get("mentor_id");
   const clientEmail = searchParams.get("email");
+  const token = searchParams.get("token"); // Token de convite do Supabase
 
   // Preencher o email do formulário se disponível no URL
   useEffect(() => {
     if (clientEmail) {
       form.setValue("email", clientEmail);
     }
-  }, [clientEmail, form]);
+    
+    // Se temos um token do Supabase, vamos verificá-lo
+    if (token) {
+      verifyInviteToken(token);
+    }
+  }, [clientEmail, token, form]);
+
+  // Verificar o token de convite do Supabase
+  const verifyInviteToken = async (token: string) => {
+    try {
+      // Verificar se o token é válido usando a API do Supabase
+      const { data, error } = await supabase.auth.verifyOtp({
+        token_hash: token,
+        type: 'invite'
+      });
+
+      if (error) {
+        console.error("Erro ao verificar token de convite:", error);
+        toast({
+          variant: "destructive",
+          title: "Convite inválido",
+          description: "O link de convite é inválido ou expirou.",
+        });
+      } else {
+        console.log("Token de convite válido:", data);
+        // Podemos extrair metadados do convite se necessário
+      }
+    } catch (error) {
+      console.error("Erro ao processar token:", error);
+    }
+  };
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setIsLoading(true);

@@ -1,37 +1,34 @@
 
-import { supabase } from '@/integrations/supabase/client';
-import { v4 as uuidv4 } from 'uuid';
-import { InvitationResult } from './types';
-import { sendInviteEmail } from './emailService';
+import { supabase } from "@/integrations/supabase/client";
+import { InvitationResult } from "./types";
+import { validate } from "./validation";
 
 /**
- * Creates a client invitation directly and sends an email
- * This avoids the recursion policy issue by directly inserting to the table
+ * Creates an invitation directly via the Supabase Auth API
+ * This method bypasses the regular flow to avoid RLS recursion issues
  */
-export const createInviteDirect = async (
+export async function createInviteDirect(
   email: string,
   name: string,
   mentorId: string
-): Promise<InvitationResult> => {
+): Promise<InvitationResult> {
   try {
-    if (!email || !name || !mentorId) {
-      console.error("Missing required params:", { email, name, mentorId });
-      return { 
-        success: false, 
-        error: 'Email, nome e ID do mentor são obrigatórios' 
+    // Validate input
+    const validateResult = validate(email, name);
+    if (!validateResult.valid) {
+      return {
+        success: false,
+        error: validateResult.error || "Erro na validação dos dados"
       };
     }
 
-    console.log(`Creating client invitation for ${email} with mentor ID ${mentorId}`);
-    
-    // Generate a new invitation code
-    const inviteId = uuidv4();
-    const inviteCode = inviteId.substring(0, 8); // First 8 chars of UUID
+    // Create invitation code in the database
+    const inviteId = crypto.randomUUID();
+    const inviteCode = inviteId.substring(0, 8).toUpperCase();
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7); // 7 days from now
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 dias a partir de hoje
     
-    // Insert the invitation code to the database - specify role as 'client'
-    const { data: invitationData, error: insertError } = await supabase
+    const { data: inviteData, error: inviteError } = await supabase
       .from('invitation_codes')
       .insert({
         id: inviteId,
@@ -45,50 +42,72 @@ export const createInviteDirect = async (
       .select('*')
       .single();
       
-    if (insertError) {
-      console.error("Error creating client invitation:", insertError);
-      return { 
-        success: false, 
-        error: insertError.message || 'Erro ao criar convite' 
-      };
-    }
-    
-    // Try to get mentor name for the email
-    const { data: mentorData } = await supabase
-      .from('profiles')
-      .select('name')
-      .eq('id', mentorId)
-      .single();
-    
-    const mentorName = mentorData?.name || 'Mentor';
-    
-    // Send invitation email using email service
-    const emailResult = await sendInviteEmail(email, name, mentorName);
-    
-    if (!emailResult.success) {
-      console.error("Failed to send invitation email:", emailResult.error);
+    if (inviteError) {
+      console.error("Erro ao criar código de convite:", inviteError);
       return {
-        success: true, // Still successful since we created the invite
-        message: 'Convite de cliente criado, mas houve um problema ao enviar o email',
-        error: emailResult.error,
-        id: inviteId
+        success: false,
+        error: `Erro ao gerar código de convite: ${inviteError.message}`
+      };
+    }
+
+    // Generate the client registration URL with mentor_id and email params
+    const baseUrl = window.location.origin;
+    const registerUrl = `${baseUrl}/client/register?mentor_id=${mentorId}&email=${encodeURIComponent(email)}`;
+    
+    // Use Supabase Auth invite user API
+    const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: registerUrl,
+      data: {
+        name: name,
+        invited_by: mentorId,
+        role: 'client'
+      }
+    });
+
+    if (authError) {
+      console.error("Erro ao enviar convite através do Supabase Auth:", authError);
+      
+      // Usando função edge para envio de email como fallback
+      const { data: emailResult, error: emailError } = await supabase.functions.invoke('send-invite-email', {
+        body: {
+          email: email,
+          clientName: name,
+          mentorName: 'Seu Mentor', // Aqui idealmente buscaríamos o nome do mentor
+          registerUrl: registerUrl
+        }
+      });
+      
+      if (emailError) {
+        console.error("Erro no fallback de envio de email:", emailError);
+        return {
+          success: false, 
+          error: `Falha ao enviar convite: ${authError.message}`
+        };
+      }
+      
+      console.log("Convite enviado via edge function como fallback:", emailResult);
+      
+      return {
+        success: true,
+        message: "Convite enviado com sucesso (via método alternativo)",
+        service: emailResult?.service || "Edge Function",
+        id: inviteData?.id
       };
     }
     
-    console.log("Email sent successfully:", emailResult);
+    console.log("Convite enviado com sucesso via Supabase Auth:", authData);
     
     return {
       success: true,
-      message: 'Convite de cliente criado e email enviado com sucesso',
-      service: emailResult.service || 'Supabase',
-      id: inviteId
+      message: "Convite enviado com sucesso",
+      service: "Supabase Auth",
+      id: inviteData?.id
     };
-  } catch (error) {
-    console.error("Error in createInviteDirect:", error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Erro desconhecido ao criar convite de cliente',
-      errorDetails: error
+  } catch (error: any) {
+    console.error("Erro ao criar convite direto:", error);
+    return { 
+      success: false, 
+      error: error.message || "Erro inesperado ao criar convite"
     };
   }
-};
+}
