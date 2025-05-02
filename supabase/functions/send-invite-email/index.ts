@@ -7,7 +7,7 @@ import { sendWithResend } from "./emailServices.ts";
 // Initialize environment
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const ENVIRONMENT = Deno.env.get("ENVIRONMENT") || "production";
-const FROM_EMAIL = "convites@rhmaster.space";
+const FROM_EMAIL = "contato@rhmaster.space";
 const FROM_NAME = "RH Mentor Mastery";
 
 serve(async (req: Request) => {

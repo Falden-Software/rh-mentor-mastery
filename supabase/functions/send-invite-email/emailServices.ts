@@ -11,7 +11,7 @@ export async function sendWithResend(
 ): Promise<EmailResult> {
   try {
     const { data, error } = await resend.emails.send({
-      from: "RH Mentor Mastery <onboarding@resend.dev>",
+      from: "RH Mentor Mastery <contato@rhmaster.space>",
       to: [to],
       subject: subject,
       html: htmlContent
