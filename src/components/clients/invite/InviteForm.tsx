@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-import { sendInviteEmail } from '@/services/invitations/emailService';
+import { InvitationService } from '@/services/invitations';
 import { InviteFormFields } from "./InviteFormFields";
 import { InviteErrorDisplay } from "./InviteErrorDisplay";
 import { InviteSuccessAlert } from "./InviteSuccessAlert";
@@ -34,7 +34,13 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!clientName.trim()) {
+    if (!clientEmail || !clientEmail.trim()) {
+      setErrorMessage("Email do cliente é obrigatório.");
+      setErrorType("error");
+      return;
+    }
+    
+    if (!clientName || !clientName.trim()) {
       setErrorMessage("Nome do cliente é obrigatório.");
       setErrorType("error");
       return;
@@ -49,53 +55,53 @@ export function InviteForm({ onInviteSent, onCancel }: InviteFormProps) {
     setErrorDetails(null);
 
     try {
-      console.log(`Tentando enviar convite para cliente ${clientEmail} com nome ${clientName}`);
+      console.log(`Tentando criar convite para ${clientEmail} com nome ${clientName}`);
       
-      // Use direct email sending to avoid RLS recursion
-      const emailResult = await sendInviteEmail(
-        clientEmail,
-        clientName,
-        user?.name || 'Mentor'
+      // Use service to create invite
+      const result = await InvitationService.createInvite(
+        clientEmail, 
+        clientName, 
+        user
       );
       
-      if (emailResult.success) {
-        console.log("Convite de cliente enviado com sucesso:", emailResult);
+      if (result.success) {
+        console.log("Convite criado com sucesso:", result);
         toast.success("Convite enviado com sucesso!");
         setClientEmail('');
         setClientName('');
         setSuccessInfo({
-          service: emailResult.service || 'Sistema de Email',
+          service: result.service || 'Sistema de Email',
           message: `Convite enviado para ${clientEmail}`
         });
         onInviteSent();
       } else {
-        console.error("Erro no envio de convite:", emailResult);
+        console.error("Erro no envio de convite:", result);
         
         // Handle specific error types
-        setIsDomainError(Boolean(emailResult.isDomainError));
-        setIsApiKeyError(Boolean(emailResult.isApiKeyError));
-        setIsSmtpError(Boolean(emailResult.isSmtpError));
-        setErrorDetails(emailResult.errorDetails);
+        setIsDomainError(Boolean(result.isDomainError));
+        setIsApiKeyError(Boolean(result.isApiKeyError));
+        setIsSmtpError(Boolean(result.isSmtpError));
+        setErrorDetails(result.errorDetails);
         
-        if (emailResult.isDomainError) {
+        if (result.isDomainError) {
           setErrorType("warning");
           setErrorMessage("Domínio não verificado no Resend. Verifique um domínio em resend.com/domains.");
-        } else if (emailResult.isApiKeyError) {
+        } else if (result.isApiKeyError) {
           setErrorType("warning");
           setErrorMessage("Chave de API não configurada. Por favor, contate o suporte.");
-        } else if (emailResult.isSmtpError) {
+        } else if (result.isSmtpError) {
           setErrorType("warning");
           setErrorMessage("Erro de conexão com o servidor de email. Por favor, tente novamente mais tarde.");
         } else {
           setErrorType("error");
-          setErrorMessage(emailResult.error || 'Erro ao enviar convite');
+          setErrorMessage(result.error || 'Erro ao enviar convite');
         }
         toast.error("Erro ao enviar convite");
       }
     } catch (error: any) {
       console.error('Erro durante o envio do convite:', error);
       setErrorType("error");
-      setErrorMessage('Erro interno ao processar convite');
+      setErrorMessage('Erro interno ao processar convite: ' + (error.message || 'Erro desconhecido'));
       toast.error('Ocorreu um erro inesperado. Tente novamente.');
     } finally {
       setIsSubmitting(false);

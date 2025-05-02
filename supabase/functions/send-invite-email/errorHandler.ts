@@ -1,23 +1,26 @@
 
-import { corsHeaders } from "./types.ts";
+import { corsHeaders } from './types.ts';
 
-export function errorResponse(message: string, details?: Record<string, any>): Response {
-  console.error(`Error: ${message}`, details || {});
-  
+export const createErrorResponse = (
+  message: string, 
+  details?: any,
+  isSmtpError?: boolean
+): Response => {
   return new Response(
     JSON.stringify({
       success: false,
       error: message,
-      details: details || null,
-      timestamp: new Date().toISOString(),
-      ...details
+      details,
+      isSmtpError,
+      isDomainError: message.includes('domain') || message.includes('domínio'),
+      isApiKeyError: message.includes('API key') || message.includes('chave')
     }),
     {
-      status: 200, // Using 200 even for errors to ensure the client receives the error message
+      status: 200, // Using 200 to ensure the client gets the error details
       headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders
-      }
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      },
     }
   );
-}
+};

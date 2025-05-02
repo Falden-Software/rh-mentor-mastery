@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { 
   Form, 
   FormControl, 
@@ -14,6 +13,7 @@ import {
 } from "@/components/ui/form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2 } from "lucide-react";
 
 interface InviteFormFieldsProps {
   clientName: string;
@@ -47,6 +47,7 @@ export function InviteFormFields({
       clientName,
       clientEmail
     },
+    mode: "onChange"
   });
 
   // Handle the form submission
@@ -72,11 +73,12 @@ export function InviteFormFields({
                   placeholder="Digite o nome do cliente"
                   disabled={isSubmitting}
                   {...field}
-                  value={clientName}
+                  value={field.value}
                   onChange={(e) => {
                     field.onChange(e);
                     setClientName(e.target.value);
                   }}
+                  required
                 />
               </FormControl>
               <FormMessage />
@@ -96,11 +98,12 @@ export function InviteFormFields({
                   placeholder="cliente@empresa.com"
                   disabled={isSubmitting}
                   {...field}
-                  value={clientEmail}
+                  value={field.value}
                   onChange={(e) => {
                     field.onChange(e);
                     setClientEmail(e.target.value);
                   }}
+                  required
                 />
               </FormControl>
               <FormMessage />
@@ -109,14 +112,19 @@ export function InviteFormFields({
         />
         
         <div className="pt-2 flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button 
             type="submit" 
             disabled={isSubmitting || !form.formState.isValid}
           >
-            {isSubmitting ? "Enviando..." : "Enviar Convite"}
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Enviando...
+              </>
+            ) : "Enviar Convite"}
           </Button>
         </div>
       </form>
