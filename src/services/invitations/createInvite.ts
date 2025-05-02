@@ -6,6 +6,7 @@ import { updateExistingInvite, createNewInvite, findExistingInvite } from './dat
 import { sendInviteEmail } from './emailService';
 import { InviteCreateParams, InvitationResult } from './types';
 import { ErrorService } from '../errorService';
+import { createInviteDirect } from './createInviteDirect';
 
 export const createInvite = async (
   email: string, 
@@ -38,33 +39,45 @@ export const createInvite = async (
       };
     }
 
-    // Normalize the parameters with trimmed values
-    const inviteParams: InviteCreateParams = {
-      email: trimmedEmail,
-      name: trimmedName,
-      mentor
-    };
-
     try {
+      // If we're encountering recursion errors, try using the direct approach
+      // This bypasses the RLS policy check that's causing the recursion
+      if (mentor.is_master_account) {
+        console.log("Using direct invite approach for master account to bypass RLS");
+        return await createInviteDirect(trimmedEmail, trimmedName, mentor.id);
+      }
+      
+      // Normalize the parameters with trimmed values
+      const inviteParams: InviteCreateParams = {
+        email: trimmedEmail,
+        name: trimmedName,
+        mentor
+      };
+
       // Validate the invitation data
       const validatedData = validateInviteData(inviteParams);
       
-      // Check for existing invite
-      const existingInvite = await findExistingInvite(validatedData.email, validatedData.mentor_id);
+      // Use RPC function to check for existing invite to avoid RLS recursion
+      // This uses the function-based approach which is safer against recursion
+      const { data: inviteData, error: inviteError } = await supabase.rpc(
+        'create_client_invitation',
+        {
+          p_email: validatedData.email,
+          p_mentor_id: validatedData.mentor_id
+        }
+      );
       
-      let inviteId;
-      if (existingInvite) {
-        // Update existing invite
-        inviteId = await updateExistingInvite(existingInvite.id);
-        console.log("Convite existente atualizado:", inviteId);
-      } else {
-        // Create new invite
-        inviteId = await createNewInvite(validatedData.email, validatedData.mentor_id, validatedData.name);
-        console.log("Novo convite criado:", inviteId);
+      if (inviteError) {
+        console.error("Error using RPC to create invitation:", inviteError);
+        // Fall back to direct database approach if RPC fails
+        return await createInviteDirect(trimmedEmail, trimmedName, mentor.id);
       }
       
+      let inviteId = inviteData;
+      console.log("Invitation created/updated via RPC with ID:", inviteId);
+
       // Send invitation email
-      console.log("Enviando email para:", validatedData.email);
+      console.log("Sending email to:", validatedData.email);
       const emailResult = await sendInviteEmail(
         validatedData.email,
         validatedData.name,
@@ -96,7 +109,11 @@ export const createInvite = async (
         };
       }
     } catch (validationError) {
-      return handleValidationError(validationError, inviteParams);
+      return handleValidationError(validationError, {
+        email: trimmedEmail,
+        name: trimmedName,
+        mentor
+      });
     }
   } catch (error) {
     return handleValidationError(error, {

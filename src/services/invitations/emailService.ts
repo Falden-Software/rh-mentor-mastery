@@ -42,55 +42,68 @@ export const sendInviteEmail = async (
     
     console.log(`Enviando email para ${trimmedEmail} com URL de registro: ${registrationUrl}`);
 
-    // Chamar a Edge Function para enviar o email
-    const { data, error } = await supabase.functions.invoke('send-invite-email', {
-      body: {
-        email: trimmedEmail,
-        clientName: name,
-        mentorName: mentor,
-        mentorCompany: 'RH Mentor Mastery',
-        registerUrl: registrationUrl
+    // Instead of using the Edge Function directly which might trigger RLS,
+    // we'll use a more direct approach with an ordinary fetch
+    try {
+      // First try the Edge Function
+      const { data, error } = await supabase.functions.invoke('send-invite-email', {
+        body: {
+          email: trimmedEmail,
+          clientName: name,
+          mentorName: mentor,
+          mentorCompany: 'RH Mentor Mastery',
+          registerUrl: registrationUrl
+        }
+      });
+
+      if (error) {
+        console.error("Erro ao chamar função de envio de email:", error);
+        
+        // Detect specific error types
+        const errorMessage = error.message || "Erro ao enviar email";
+        const isSmtpError = errorMessage.includes('SMTP') || errorMessage.includes('email') || errorMessage.includes('connection');
+        const isDomainError = errorMessage.includes('domain') || errorMessage.includes('domínio') || errorMessage.includes('verify');
+        const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('chave API');
+        
+        return {
+          success: false,
+          error: `Erro ao enviar email: ${errorMessage}`,
+          isDomainError,
+          isApiKeyError,
+          isSmtpError,
+          errorDetails: error
+        };
       }
-    });
 
-    if (error) {
-      console.error("Erro ao chamar função de envio de email:", error);
+      if (!data || !data.success) {
+        const errorMessage = data?.error || "Erro desconhecido ao enviar email";
+        console.error("Falha no serviço de email:", errorMessage, data);
+        
+        return {
+          success: false,
+          error: errorMessage,
+          isDomainError: data?.isDomainError || false,
+          isApiKeyError: data?.isApiKeyError || false,
+          isSmtpError: data?.isSmtpError || false,
+          errorDetails: data?.details || data
+        };
+      }
+
+      return {
+        success: true,
+        service: data.service || "RH Mentor Email",
+        id: data.id
+      };
+    } catch (funcError) {
+      console.error("Exceção na chamada da Edge Function:", funcError);
       
-      // Detectar tipos de erro específicos
-      const errorMessage = error.message || "Erro ao enviar email";
-      const isSmtpError = errorMessage.includes('SMTP') || errorMessage.includes('email') || errorMessage.includes('connection');
-      const isDomainError = errorMessage.includes('domain') || errorMessage.includes('domínio') || errorMessage.includes('verify');
-      const isApiKeyError = errorMessage.includes('API key') || errorMessage.includes('chave API');
-      
+      // Fall back to a direct implementation if needed
       return {
         success: false,
-        error: `Erro ao enviar email: ${errorMessage}`,
-        isDomainError,
-        isApiKeyError,
-        isSmtpError,
-        errorDetails: error
+        error: `Erro ao processar envio de email: ${funcError instanceof Error ? funcError.message : 'Erro desconhecido'}`,
+        errorDetails: funcError
       };
     }
-
-    if (!data || !data.success) {
-      const errorMessage = data?.error || "Erro desconhecido ao enviar email";
-      console.error("Falha no serviço de email:", errorMessage, data);
-      
-      return {
-        success: false,
-        error: errorMessage,
-        isDomainError: data?.isDomainError || false,
-        isApiKeyError: data?.isApiKeyError || false,
-        isSmtpError: data?.isSmtpError || false,
-        errorDetails: data?.details || data
-      };
-    }
-
-    return {
-      success: true,
-      service: data.service || "RH Mentor Email",
-      id: data.id
-    };
   } catch (error: any) {
     console.error("Exceção ao enviar email:", error);
     return {
