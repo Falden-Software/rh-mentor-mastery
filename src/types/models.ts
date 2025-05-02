@@ -1,4 +1,3 @@
-
 import { ForwardRefExoticComponent, RefAttributes } from "react";
 import { LucideProps } from "lucide-react";
 
@@ -8,9 +7,10 @@ export interface InvitationCode {
   email: string;
   mentor_id: string;
   is_used: boolean;
-  expires_at: string;
-  used_by?: string;
+  used_by?: string | null;
   created_at: string;
+  expires_at: string;
+  role?: string;
 }
 
 export interface ClientTest {

@@ -12,6 +12,8 @@ import { InvitationCode } from '@/types/models';
  */
 export const getMentorInvitations = async (mentorId: string): Promise<InvitationCode[]> => {
   try {
+    console.log("Fetching invitations for mentor:", mentorId);
+    
     // Use a direct query instead of a join that might trigger RLS recursion
     const { data, error } = await supabase
       .from('invitation_codes')
@@ -22,13 +24,17 @@ export const getMentorInvitations = async (mentorId: string): Promise<Invitation
     if (error) {
       console.error("Error fetching mentor invitations:", error);
       ErrorService.logError('database_error', error, { mentorId });
-      throw error;
+      throw new Error(`Error fetching invitation history: ${error.message}`);
     }
     
+    console.log(`Found ${data?.length || 0} invitations for mentor`);
     return data || [];
   } catch (error) {
     console.error("Failed to get mentor invitations:", error);
     ErrorService.logError('database_error', error, { mentorId });
-    throw error;
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error('Unknown error fetching invitations');
   }
 };

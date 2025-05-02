@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { 
@@ -12,12 +13,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Mail, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { Mail, Loader2, CheckCircle, Clock, XCircle, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/context/AuthContext';
 import useNotifications from '@/hooks/useNotifications';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { InvitationService } from '@/services/invitations';
 import { InvitationCode } from '@/types/models';
-import { InvitationService } from '@/services/invitations/index';
 
 const InvitationHistory = () => {
   const { user } = useAuth();
@@ -30,45 +32,43 @@ const InvitationHistory = () => {
       if (!user?.id) return [];
       
       try {
-        const data = await InvitationService.getMentorInvitations(user.id);
-        return data || [];
+        return await InvitationService.getMentorInvitations(user.id);
       } catch (error) {
         console.error("Error fetching invitation history:", error);
-        notify.error("Error loading invitation history");
-        throw error;
+        throw new Error("Error loading invitation history");
       }
     },
     enabled: !!user?.id,
   });
   
-  if (error) {
-    console.error("Error in invitation query:", error);
-  }
-
+  // Mutation for resending invitations
   const resendMutation = useMutation({
     mutationFn: async (inviteId: string) => {
       setSendingEmails(prev => ({ ...prev, [inviteId]: true }));
       
       try {
-        const result = await InvitationService.resendInvitation(inviteId, user?.id || '');
+        const { data, error } = await supabase.functions.invoke('resend-invitation', {
+          body: { inviteId }
+        });
         
-        if (!result.success) {
-          throw new Error(result.error || "Unknown error");
+        if (error || !data?.success) {
+          throw error || new Error(data?.error || "Unknown error");
         }
         
-        return result;
-      } catch (error: any) {
+        return data;
+      } catch (error) {
+        console.error("Error in resend mutation:", error);
         throw error;
       }
     },
     onSuccess: (data, inviteId) => {
-      notify.success(data.message || "Invitation resent successfully!");
+      notify.success(data.message || "Convite reenviado com sucesso!");
       setSendingEmails(prev => ({ ...prev, [inviteId]: false }));
       refetch();
     },
     onError: (error: any, inviteId) => {
       console.error("Error resending invitation:", error);
-      notify.error("Failed to resend invitation. Please try again later.");
+      notify.error(error.message || "Falha ao reenviar convite");
       setSendingEmails(prev => ({ ...prev, [inviteId]: false }));
     }
   });
@@ -77,7 +77,7 @@ const InvitationHistory = () => {
     try {
       return format(new Date(dateString), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
     } catch (e) {
-      return "Invalid date";
+      return "Data inválida";
     }
   };
 
@@ -105,7 +105,7 @@ const InvitationHistory = () => {
       </Badge>
     );
   };
-
+  
   const isInviteExpired = (invite: InvitationCode): boolean => {
     const expiresAt = new Date(invite.expires_at);
     return expiresAt < new Date();
@@ -119,16 +119,28 @@ const InvitationHistory = () => {
     );
   }
 
+  if (error) {
+    return (
+      <Alert variant="destructive" className="mb-4">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Erro</AlertTitle>
+        <AlertDescription>
+          {error instanceof Error ? error.message : "Erro ao carregar histórico de convites"}
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="overflow-hidden rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Email</TableHead>
-            <TableHead className="hidden md:table-cell">Sent date</TableHead>
-            <TableHead className="hidden md:table-cell">Expires on</TableHead>
+            <TableHead className="hidden md:table-cell">Data de envio</TableHead>
+            <TableHead className="hidden md:table-cell">Expira em</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="w-[100px]">Actions</TableHead>
+            <TableHead className="w-[100px]">Ações</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -138,7 +150,7 @@ const InvitationHistory = () => {
                 <TableCell>
                   {invitation.email}
                   <div className="md:hidden text-xs text-gray-500 mt-1">
-                    Sent: {formatDate(invitation.created_at)}
+                    Enviado: {formatDate(invitation.created_at)}
                   </div>
                 </TableCell>
                 <TableCell className="hidden md:table-cell">{formatDate(invitation.created_at)}</TableCell>
@@ -151,7 +163,7 @@ const InvitationHistory = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => resendMutation.mutate(invitation.id)}
-                    disabled={sendingEmails[invitation.id] || invitation.is_used}
+                    disabled={sendingEmails[invitation.id] || invitation.is_used || isInviteExpired(invitation)}
                     className={invitation.is_used ? "opacity-50 cursor-not-allowed" : ""}
                   >
                     {sendingEmails[invitation.id] ? (
@@ -159,7 +171,7 @@ const InvitationHistory = () => {
                     ) : (
                       <>
                         <Mail className="h-4 w-4 mr-1" />
-                        Resend
+                        Reenviar
                       </>
                     )}
                   </Button>
@@ -169,7 +181,7 @@ const InvitationHistory = () => {
           ) : (
             <TableRow>
               <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                No invitations sent yet.
+                Nenhum convite enviado ainda.
               </TableCell>
             </TableRow>
           )}
