@@ -76,12 +76,11 @@ export const resendInvite = async (inviteId: string, mentorId: string): Promise<
       
     const mentorName = mentorData?.name || 'Seu Mentor';
     
-    // Enviar email
+    // Enviar email - Fix the number of arguments passed to sendInviteEmail
     const result = await sendInviteEmail(
       invite.email,
       undefined, // Cliente pode não ter um nome registrado ainda
-      mentorName,
-      invite.code // Passando o código do convite para o email
+      mentorName
     );
     
     console.log("Resultado do envio de email:", result);

@@ -15,7 +15,8 @@ export const findExistingInvite = async (email: string, mentorId: string) => {
   return data;
 };
 
-export const updateExistingInvite = async (inviteId: string) => {
+// Rename the function to match what's expected in createInvite.ts
+export const createExistingInvite = async (inviteId: string) => {
   const expirationDate = addDays(new Date(), 7).toISOString();
   
   const { error } = await supabase
