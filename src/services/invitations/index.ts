@@ -1,4 +1,3 @@
-
 import { resendInvite } from './resendInvite';
 import { getMentorInvitations } from './getMentorInvitations';
 import { sendInviteEmail } from './emailService';
@@ -17,7 +16,8 @@ export const InvitationService = {
   getMentorInvitations,
   createInvite,
   
-  async createInvite(
+  // Keep the legacy implementation for backward compatibility
+  async createInvitation(
     email: string, 
     clientName: string = '', 
     mentor: { id?: string; name?: string } | null = null

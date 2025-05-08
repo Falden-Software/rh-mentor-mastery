@@ -62,7 +62,7 @@ export const sendInviteEmail = async (
     
     return {
       success: true,
-      message: 'Convite enviado com sucesso',
+      error: undefined,
       service: data.service,
       id: data.id
     };
