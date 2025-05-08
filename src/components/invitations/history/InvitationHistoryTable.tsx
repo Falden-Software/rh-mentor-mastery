@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Mail, Loader2 } from 'lucide-react';
+import { Mail, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react';
 import { InvitationCode } from '@/types/models';
 
 interface InvitationHistoryTableProps {
@@ -104,8 +104,6 @@ interface StatusBadgeProps {
 }
 
 const StatusBadge: React.FC<StatusBadgeProps> = ({ invitation }) => {
-  const { CheckCircle, Clock, XCircle } = require('lucide-react');
-  
   if (invitation.is_used) {
     return (
       <Badge className="bg-green-100 text-green-800 hover:bg-green-200 flex items-center gap-1">
